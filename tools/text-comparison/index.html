@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A tool to compare two texts and highlight differences with customizable ignore options">
+    <title>Text Comparison Tool &middot; Utility Pages</title>
+    <link rel="stylesheet" href="../../shared/styles.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <main class="container">
+        <nav class="page-nav" aria-label="Breadcrumb">
+            <a href="../../index.html" class="back-link">&#8592; All utilities</a>
+        </nav>
+
+        <h1>Text Comparison Tool</h1>
+
+        <form id="comparisonForm" class="comparison-form">
+            <div class="input-section">
+                <div class="text-container">
+                    <label for="text1">
+                        <h2>Text 1</h2>
+                    </label>
+                    <textarea
+                        id="text1"
+                        name="text1"
+                        placeholder="Enter first text here..."
+                        aria-label="First text to compare"
+                        rows="10"></textarea>
+                </div>
+                <div class="text-container">
+                    <label for="text2">
+                        <h2>Text 2</h2>
+                    </label>
+                    <textarea
+                        id="text2"
+                        name="text2"
+                        placeholder="Enter second text here..."
+                        aria-label="Second text to compare"
+                        rows="10"></textarea>
+                </div>
+            </div>
+
+            <fieldset class="options-section">
+                <legend class="sr-only">Comparison Options</legend>
+                <div class="option">
+                    <input type="checkbox" id="ignoreCase" name="ignoreCase" checked>
+                    <label for="ignoreCase">Ignore Case</label>
+                </div>
+                <div class="option">
+                    <input type="checkbox" id="ignoreSpaces" name="ignoreSpaces" checked>
+                    <label for="ignoreSpaces">Ignore Spaces</label>
+                </div>
+                <div class="option">
+                    <input type="checkbox" id="ignoreLineFeeds" name="ignoreLineFeeds" checked>
+                    <label for="ignoreLineFeeds">Ignore Line Feeds</label>
+                </div>
+                <div class="option">
+                    <input type="checkbox" id="ignoreEscapeSequences" name="ignoreEscapeSequences" checked>
+                    <label for="ignoreEscapeSequences">Ignore Escape Sequences (e.g., \n, \", \t)</label>
+                </div>
+            </fieldset>
+
+            <button type="submit" class="compare-btn" id="compareBtn">Compare Texts</button>
+        </form>
+
+        <div class="loading-spinner" id="loadingSpinner" role="status" aria-live="polite">
+            <div class="spinner" aria-hidden="true"></div>
+            <p>Processing comparison...</p>
+        </div>
+
+        <div class="results-section" id="resultsSection" aria-live="polite">
+            <div class="status-message" id="statusMessage" role="alert"></div>
+
+            <div class="comparison-display">
+                <div class="result-container">
+                    <div class="result-header">
+                        <h3>Text 1 (with differences)</h3>
+                        <div class="panel-navigation" id="diffNavigation1">
+                            <button type="button" class="nav-btn-small" id="prevDiffBtn1" aria-label="Go to previous difference in text 1" title="Previous diff (↑)">
+                                <span aria-hidden="true">&#8593;</span>
+                            </button>
+                            <span class="diff-counter-small" id="diffCounter1" aria-live="polite">-</span>
+                            <button type="button" class="nav-btn-small" id="nextDiffBtn1" aria-label="Go to next difference in text 1" title="Next diff (↓)">
+                                <span aria-hidden="true">&#8595;</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="result-text" id="result1" aria-label="Text 1 comparison result"></div>
+                </div>
+                <div class="result-container">
+                    <div class="result-header">
+                        <h3>Text 2 (with differences)</h3>
+                        <div class="panel-navigation" id="diffNavigation2">
+                            <button type="button" class="nav-btn-small" id="prevDiffBtn2" aria-label="Go to previous difference in text 2" title="Previous diff (↑)">
+                                <span aria-hidden="true">&#8593;</span>
+                            </button>
+                            <span class="diff-counter-small" id="diffCounter2" aria-live="polite">-</span>
+                            <button type="button" class="nav-btn-small" id="nextDiffBtn2" aria-label="Go to next difference in text 2" title="Next diff (↓)">
+                                <span aria-hidden="true">&#8595;</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="result-text" id="result2" aria-label="Text 2 comparison result"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Convert line breaks to commas (or any separator), in either direction, with an optional per-item template.">
+    <title>Line Break Converter &middot; Utility Pages</title>
+    <link rel="stylesheet" href="../../shared/styles.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <main class="container">
+        <nav class="page-nav" aria-label="Breadcrumb">
+            <a href="../../index.html" class="back-link">&#8592; All utilities</a>
+        </nav>
+
+        <h1>Line Break Converter</h1>
+        <p class="tool-intro">Split your input on one separator and join it with another. By default it turns line breaks into commas, but you can convert in any direction and wrap each item with a template.</p>
+
+        <div class="converter">
+            <div class="controls">
+                <div class="control">
+                    <label for="findSep">Split input on</label>
+                    <select id="findSep">
+                        <option value="newline" selected>Line break</option>
+                        <option value="comma">Comma</option>
+                        <option value="semicolon">Semicolon</option>
+                        <option value="space">Space</option>
+                        <option value="tab">Tab</option>
+                        <option value="custom">Custom&hellip;</option>
+                    </select>
+                    <input type="text" id="findCustom" class="custom-sep" placeholder="Custom separator" aria-label="Custom split separator" hidden>
+                </div>
+
+                <div class="control">
+                    <label for="replaceSep">Join with</label>
+                    <select id="replaceSep">
+                        <option value="comma" selected>Comma</option>
+                        <option value="newline">Line break</option>
+                        <option value="semicolon">Semicolon</option>
+                        <option value="space">Space</option>
+                        <option value="tab">Tab</option>
+                        <option value="custom">Custom&hellip;</option>
+                    </select>
+                    <input type="text" id="replaceCustom" class="custom-sep" placeholder="Custom separator" aria-label="Custom join separator" hidden>
+                </div>
+
+                <div class="control">
+                    <label for="template">Item template <span class="hint">(use <code>{text}</code>)</span></label>
+                    <input type="text" id="template" class="template-input" placeholder="{text}" value="{text}" aria-label="Per-item template, use {text} as the placeholder">
+                </div>
+            </div>
+
+            <fieldset class="options-row">
+                <legend class="sr-only">Options</legend>
+                <div class="option">
+                    <input type="checkbox" id="trimItems" checked>
+                    <label for="trimItems">Trim each item</label>
+                </div>
+                <div class="option">
+                    <input type="checkbox" id="removeEmpty" checked>
+                    <label for="removeEmpty">Remove empty items</label>
+                </div>
+            </fieldset>
+
+            <button type="button" class="convert-btn" id="convertBtn">Convert</button>
+
+            <div class="io-grid">
+                <div class="io-block">
+                    <div class="io-header">
+                        <label for="input"><h2>Input</h2></label>
+                        <button type="button" class="text-btn" id="clearBtn">Clear</button>
+                    </div>
+                    <textarea id="input" placeholder="Paste your list here, one item per line..." aria-label="Input text" spellcheck="false"></textarea>
+                    <p class="io-meta" id="inputMeta" aria-live="polite">0 items</p>
+                </div>
+
+                <div class="io-block">
+                    <div class="io-header">
+                        <label for="output"><h2>Output</h2></label>
+                        <button type="button" class="text-btn" id="copyBtn">Copy</button>
+                    </div>
+                    <textarea id="output" placeholder="Result appears here..." aria-label="Converted output" readonly spellcheck="false"></textarea>
+                    <p class="io-meta" id="copyStatus" role="status" aria-live="polite"></p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

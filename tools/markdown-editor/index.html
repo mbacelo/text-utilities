@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Write Markdown on the left and see a styled, live-updating preview on the right, with synchronized scrolling. Paste rich text to convert it to Markdown.">
+    <title>Markdown Editor &middot; Utility Pages</title>
+    <link rel="stylesheet" href="../../shared/styles.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <main class="container editor-page">
+        <nav class="page-nav" aria-label="Breadcrumb">
+            <a href="../../index.html" class="back-link">&#8592; All utilities</a>
+        </nav>
+
+        <h1>Markdown Editor</h1>
+        <p class="tool-intro">Type Markdown on the left and watch the preview update live on the right. Headings, tables, code blocks, lists and more are supported, and both panes scroll in sync. The preview is editable too: type in it, or paste stylized text (from Word, Google&nbsp;Docs, a web page&hellip;), and the Markdown updates automatically.</p>
+
+        <div class="editor-layout">
+            <div class="pane">
+                <div class="pane-header">
+                    <h2>Markdown</h2>
+                    <div class="pane-actions">
+                        <button type="button" class="text-btn" id="clearBtn">Clear</button>
+                        <button type="button" class="text-btn" id="copyMdBtn">Copy Markdown</button>
+                    </div>
+                </div>
+                <textarea id="editor" placeholder="# Start typing Markdown here..." aria-label="Markdown source" spellcheck="false"></textarea>
+                <p class="pane-meta" id="editorMeta" aria-live="polite"></p>
+            </div>
+
+            <div class="pane">
+                <div class="pane-header">
+                    <h2>Preview</h2>
+                    <div class="pane-actions">
+                        <button type="button" class="text-btn" id="copyHtmlBtn">Copy HTML</button>
+                    </div>
+                </div>
+                <div id="preview" class="preview" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Editable rendered preview. Type or paste rich text here and it is converted to Markdown." spellcheck="false"></div>
+                <p class="pane-meta" id="copyStatus" role="status" aria-live="polite"></p>
+            </div>
+        </div>
+    </main>
+
+    <script src="vendor/marked.min.js"></script>
+    <script src="vendor/purify.min.js"></script>
+    <script src="vendor/turndown.min.js"></script>
+    <script src="vendor/turndown-plugin-gfm.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+Version 1
+
+The quick brown fox jumped over the lazy dog.
+It was a sunny day, and everything felt peaceful in the meadow.
+A small bird was singing on a nearby branch.
+The fox ran toward the forest to find something to eat.
+This line exists only in Version 1 and should show up as removed.
+
+
+Version 2
+
+The quick brown fox leaps over the lazy dog.
+It was a bright afternoon, and the meadow was quiet.
+The fox hurried into the forest to search for food.
+A rabbit watched from a distance but made no sound.
+This line exists only in Version 2 and should show up as added.
+
+Here’s a detailed explanation of how a text diff should behave for the provided examples:
+
+---
+
+### **1. Line-by-line differences**
+
+* **Line 1**
+
+  * **Version 1:** `The quick brown fox jumped over the lazy dog.`
+  * **Version 2:** `The quick brown fox leaps over the lazy dog.`
+  * **Diff behavior:** Highlight `jumped` → `leaps`.
+
+* **Line 2**
+
+  * **Version 1:** `It was a sunny day, and everything felt peaceful in the meadow.`
+  * **Version 2:** `It was a bright afternoon, and the meadow was quiet.`
+  * **Diff behavior:** Highlight `sunny day, and everything felt peaceful` → `bright afternoon, and the meadow was quiet`.
+
+* **Line 3**
+
+  * **Version 1:** `A small bird was singing on a nearby branch.`
+  * **Version 2:** Not present.
+  * **Diff behavior:** Mark this line as **removed**.
+
+* **Line 4**
+
+  * **Version 1:** `The fox ran toward the forest to find something to eat.`
+  * **Version 2:** `The fox hurried into the forest to search for food.`
+  * **Diff behavior:** Highlight `ran toward` → `hurried into` and `to find something to eat` → `to search for food`.
+
+* **Line 5**
+
+  * **Version 1:** `This line exists only in Version 1 and should show up as removed.`
+  * **Version 2:** `This line exists only in Version 2 and should show up as added.`
+  * **Diff behavior:** Mark the first line as **removed** and the second as **added**.
+
+* **Line 6 (Version 2 only)**
+
+  * `A rabbit watched from a distance but made no sound.`
+  * **Diff behavior:** Mark this line as **added**.
+
+---
+
+### **2. Types of highlighting expected**
+
+* **Inline changes**: Words or phrases that differ within the same line (e.g., `jumped` → `leaps`).
+* **Line additions/removals**: Lines that exist in only one version should be clearly marked as added or removed.
+* **Context preservation**: Surrounding unchanged lines remain unhighlighted, so differences are easy to spot.
+
