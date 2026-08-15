@@ -386,20 +386,33 @@ That's it — clear this and start writing.
 
     function clearEditor() {
         els.editor.value = '';
-        localStorage.setItem(STORAGE_KEY, '');
+        writeStored('');
         render();
         els.editor.focus();
     }
 
+    // Storage access throws outright in some contexts (Safari lockdown, blocked
+    // cookies, certain file:// loads), so every call goes through these two.
+    // Persistence is best-effort; the editor itself must keep working.
+    function readStored() {
+        try {
+            return localStorage.getItem(STORAGE_KEY);
+        } catch (err) {
+            return null;
+        }
+    }
+
+    function writeStored(value) {
+        try {
+            localStorage.setItem(STORAGE_KEY, value);
+        } catch (err) {
+            // Storage full or unavailable — nothing to do.
+        }
+    }
+
     function persist() {
         clearTimeout(persist.timer);
-        persist.timer = setTimeout(() => {
-            try {
-                localStorage.setItem(STORAGE_KEY, els.editor.value);
-            } catch (err) {
-                // Storage full or unavailable — persistence is best-effort.
-            }
-        }, 300);
+        persist.timer = setTimeout(() => writeStored(els.editor.value), 300);
     }
 
     /* =====================
@@ -445,7 +458,7 @@ That's it — clear this and start writing.
         createMirror();
         bindEvents();
 
-        const saved = localStorage.getItem(STORAGE_KEY);
+        const saved = readStored();
         els.editor.value = saved === null ? SAMPLE : saved;
         render();
     }
