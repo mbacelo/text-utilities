@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Comparison — Tests</title>
+    <style>
+        body {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            max-width: 60rem;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            line-height: 1.5;
+            color: #1f2933;
+            background: #fff;
+        }
+
+        h1 { font-size: 1.25rem; }
+
+        #summary {
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        #summary.pass { background: #d7f5e3; color: #0b6b3a; }
+        #summary.fail { background: #fbdcdc; color: #8a1f1f; }
+
+        table { border-collapse: collapse; width: 100%; }
+
+        td {
+            border-bottom: 1px solid #e4e7eb;
+            padding: 0.4rem 0.6rem;
+            vertical-align: top;
+        }
+
+        td.status { width: 4.5rem; font-weight: 700; }
+        tr.pass td.status { color: #0b6b3a; }
+        tr.fail td.status { color: #8a1f1f; }
+        tr.fail { background: #fff6f6; }
+
+        td.detail { color: #52606d; white-space: pre-wrap; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+    <h1>Text Comparison — Tests</h1>
+    <p>Zero-dependency test page. Open it directly in a browser; no server or build required.</p>
+    <div id="summary">Running…</div>
+    <table><tbody id="results"></tbody></table>
+
+    <script>window.__TEST__ = true;</script>
+    <script src="script.js"></script>
+    <script>
+    (function () {
+        'use strict';
+
+        var api = window.__diff;
+        var rows = document.getElementById('results');
+        var passed = 0;
+        var failed = 0;
+
+        function record(name, ok, detail) {
+            if (ok) { passed++; } else { failed++; }
+            var tr = document.createElement('tr');
+            tr.className = ok ? 'pass' : 'fail';
+
+            var status = document.createElement('td');
+            status.className = 'status';
+            status.textContent = ok ? 'PASS' : 'FAIL';
+
+            var label = document.createElement('td');
+            label.textContent = name;
+
+            var info = document.createElement('td');
+            info.className = 'detail';
+            info.textContent = ok ? '' : (detail || '');
+
+            tr.appendChild(status);
+            tr.appendChild(label);
+            tr.appendChild(info);
+            rows.appendChild(tr);
+        }
+
+        function test(name, fn) {
+            try {
+                fn();
+                record(name, true);
+            } catch (error) {
+                record(name, false, error && error.message ? error.message : String(error));
+            }
+        }
+
+        function assert(condition, message) {
+            if (!condition) throw new Error(message || 'assertion failed');
+        }
+
+        function assertEqual(actual, expected, message) {
+            if (actual !== expected) {
+                throw new Error((message || 'not equal') +
+                    '\n  expected: ' + JSON.stringify(expected) +
+                    '\n  actual:   ' + JSON.stringify(actual));
+            }
+        }
+
+        // Option helpers -------------------------------------------------
+
+        var NONE = {
+            ignoreCase: false,
+            ignoreSpaces: false,
+            ignoreLineFeeds: false,
+            ignoreEscapeSequences: false
+        };
+
+        // The tool's default checkbox state: everything checked.
+        var ALL = {
+            ignoreCase: true,
+            ignoreSpaces: true,
+            ignoreLineFeeds: true,
+            ignoreEscapeSequences: true
+        };
+
+        function opts(overrides) {
+            var result = {};
+            var key;
+            for (key in NONE) { result[key] = NONE[key]; }
+            for (key in (overrides || {})) { result[key] = overrides[key]; }
+            return result;
+        }
+
+        // This mirrors how performComparison decides "same" vs "different".
+        function isEqualDiff(parts) {
+            return parts.every(function (part) { return part.type === 'equal'; });
+        }
+
+        function types(parts) {
+            return parts.map(function (part) { return part.type; }).join(',');
+        }
+
+        // Concatenated text of all parts of a given type, per side.
+        function textOf(parts, side, type) {
+            return parts.filter(function (p) { return p.type === type; })
+                .map(function (p) {
+                    if (type === 'equal' || type === 'changed') {
+                        return side === 1 ? p.value1 : p.value2;
+                    }
+                    return p.value;
+                })
+                .join('');
+        }
+
+        // ----------------------------------------------------------------
+        // Sanity
+        // ----------------------------------------------------------------
+
+        test('test hook exposes the internals under test', function () {
+            assert(api, 'window.__diff was not set — is window.__TEST__ set before script.js?');
+            ['computeLineDiff', 'computeLCSPairs', 'computeWordDiff', 'tokenizeText', 'normalizeForComparison']
+                .forEach(function (name) {
+                    assert(typeof api[name] === 'function', 'missing export: ' + name);
+                });
+        });
+
+        // ----------------------------------------------------------------
+        // Equality verdict must agree with the rendered diff
+        // ----------------------------------------------------------------
+
+        test('identical texts are all-equal', function () {
+            var parts = api.computeLineDiff('hello\nworld', 'hello\nworld', opts());
+            assert(isEqualDiff(parts), 'expected every part to be equal, got: ' + types(parts));
+        });
+
+        test('empty inputs are all-equal', function () {
+            var parts = api.computeLineDiff('', '', opts());
+            assert(isEqualDiff(parts), 'got: ' + types(parts));
+        });
+
+        test('REGRESSION: "a\\nb" vs "ab" is different under default options', function () {
+            // applyTransformations used to strip line feeds and report "exactly the
+            // same" while the panels painted every line as changed. The verdict is
+            // now derived from the diff, so the two can no longer disagree.
+            var parts = api.computeLineDiff('a\nb', 'ab', ALL);
+            assert(!isEqualDiff(parts),
+                'verdict says equal but the diff shows changes: ' + types(parts));
+        });
+
+        test('REGRESSION: line-feed-only difference is reported as different', function () {
+            var parts = api.computeLineDiff('one\ntwo\nthree', 'onetwothree', ALL);
+            assert(!isEqualDiff(parts), 'got: ' + types(parts));
+        });
+
+        test('text differing only by trailing newline is different under no options', function () {
+            var parts = api.computeLineDiff('abc', 'abc\n', opts());
+            assert(!isEqualDiff(parts), 'got: ' + types(parts));
+        });
+
+        // ----------------------------------------------------------------
+        // Options, in isolation
+        // ----------------------------------------------------------------
+
+        test('ignoreCase off: case difference is a difference', function () {
+            var parts = api.computeLineDiff('Hello', 'hello', opts());
+            assert(!isEqualDiff(parts), 'got: ' + types(parts));
+        });
+
+        test('ignoreCase on: case difference is equal', function () {
+            var parts = api.computeLineDiff('Hello', 'hello', opts({ ignoreCase: true }));
+            assert(isEqualDiff(parts), 'got: ' + types(parts));
+        });
+
+        test('ignoreCase preserves each side original casing in the output', function () {
+            var parts = api.computeLineDiff('Hello', 'hello', opts({ ignoreCase: true }));
+            assertEqual(textOf(parts, 1, 'equal'), 'Hello', 'left side lost its casing');
+            assertEqual(textOf(parts, 2, 'equal'), 'hello', 'right side lost its casing');
+        });
+
+        test('ignoreSpaces off: inner spaces matter', function () {
+            var parts = api.computeLineDiff('a b', 'ab', opts());
+            assert(!isEqualDiff(parts), 'got: ' + types(parts));
+        });
+
+        test('ignoreSpaces on: inner spaces are equal', function () {
+            var parts = api.computeLineDiff('a b', 'ab', opts({ ignoreSpaces: true }));
+            assert(isEqualDiff(parts), 'got: ' + types(parts));
+        });
+
+        test('ignoreSpaces does not collapse line feeds', function () {
+            var parts = api.computeLineDiff('a\nb', 'ab', opts({ ignoreSpaces: true }));
+            assert(!isEqualDiff(parts), 'line feeds must be governed by ignoreLineFeeds only');
+        });
+
+        test('ignoreLineFeeds on: a blank line on one side only is equal', function () {
+            var parts = api.computeLineDiff('a\n\nb', 'a\nb', opts({ ignoreLineFeeds: true }));
+            assert(isEqualDiff(parts), 'got: ' + types(parts));
+        });
+
+        test('ignoreLineFeeds off: a blank line on one side only is a difference', function () {
+            var parts = api.computeLineDiff('a\n\nb', 'a\nb', opts());
+            assert(!isEqualDiff(parts), 'got: ' + types(parts));
+        });
+
+        test('ignoreEscapeSequences on: literal \\n sequences are stripped', function () {
+            var parts = api.computeLineDiff('a\\nb', 'ab', opts({ ignoreEscapeSequences: true }));
+            assert(isEqualDiff(parts), 'got: ' + types(parts));
+        });
+
+        test('ignoreEscapeSequences off: literal \\n sequences matter', function () {
+            var parts = api.computeLineDiff('a\\nb', 'ab', opts());
+            assert(!isEqualDiff(parts), 'got: ' + types(parts));
+        });
+
+        // ----------------------------------------------------------------
+        // Sentinel collision: user text that looks like an internal marker
+        // ----------------------------------------------------------------
+
+        test('user text "__IGNORED_EMPTY_LINE__" does not equal a blank line', function () {
+            var parts = api.computeLineDiff('__IGNORED_EMPTY_LINE__', '', opts({ ignoreLineFeeds: true }));
+            assert(!isEqualDiff(parts), 'sentinel leaked into user-text comparison');
+        });
+
+        // The space and line-feed markers only exist inside computeWordDiff, so
+        // they have to be probed there — a computeLineDiff test passes either way
+        // and would guard nothing.
+        test('user text "__IGNORED_SPACE__" is not treated as an ignored space', function () {
+            // With ignoreSpaces on, a real space is equal to nothing. The literal
+            // token must not inherit that behaviour.
+            var parts = api.computeWordDiff('a__IGNORED_SPACE__b', 'ab', opts({ ignoreSpaces: true }));
+            var changed = parts.filter(function (p) { return p.type !== 'equal'; });
+            assert(changed.length > 0, 'literal sentinel text was swallowed as an ignored space');
+        });
+
+        test('user text "__IGNORED_LINEFEED__" is not treated as an ignored line feed', function () {
+            var parts = api.computeWordDiff('a__IGNORED_LINEFEED__b', 'ab', opts({ ignoreLineFeeds: true }));
+            var changed = parts.filter(function (p) { return p.type !== 'equal'; });
+            assert(changed.length > 0, 'literal sentinel text was swallowed as an ignored line feed');
+        });
+
+        test('a literal sentinel compares equal to itself', function () {
+            var parts = api.computeLineDiff('__IGNORED_LINEFEED__', '__IGNORED_LINEFEED__', ALL);
+            assert(isEqualDiff(parts), 'got: ' + types(parts));
+        });
+
+        test('an ignored space really is ignored (the marker still works)', function () {
+            // What the marker does: make differing whitespace separators compare
+            // equal. A space and a tab are the same separator under ignoreSpaces.
+            var parts = api.computeWordDiff('a b', 'a\tb', opts({ ignoreSpaces: true }));
+            assert(parts.every(function (p) { return p.type === 'equal'; }),
+                'ignoreSpaces stopped working: ' + types(parts));
+        });
+
+        test('without ignoreSpaces a space and a tab stay different', function () {
+            var parts = api.computeWordDiff('a b', 'a\tb', opts());
+            assert(parts.some(function (p) { return p.type !== 'equal'; }),
+                'separators were treated as equal with the option off');
+        });
+
+        // ----------------------------------------------------------------
+        // Diff shape — the spec in "diff behavior.txt"
+        // ----------------------------------------------------------------
+
+        var V1 = [
+            'The quick brown fox jumped over the lazy dog.',
+            'It was a sunny day, and everything felt peaceful in the meadow.',
+            'A small bird was singing on a nearby branch.',
+            'The fox ran toward the forest to find something to eat.',
+            'This line exists only in Version 1 and should show up as removed.'
+        ].join('\n');
+
+        var V2 = [
+            'The quick brown fox leaps over the lazy dog.',
+            'It was a bright afternoon, and the meadow was quiet.',
+            'The fox hurried into the forest to search for food.',
+            'A rabbit watched from a distance but made no sound.',
+            'This line exists only in Version 2 and should show up as added.'
+        ].join('\n');
+
+        test('spec: the sample versions are reported as different', function () {
+            var parts = api.computeLineDiff(V1, V2, opts());
+            assert(!isEqualDiff(parts), 'got: ' + types(parts));
+        });
+
+        test('spec: "jumped" -> "leaps" is an inline change, not a whole-line swap', function () {
+            var parts = api.computeLineDiff(V1, V2, opts());
+            assert(parts.some(function (p) {
+                return p.type === 'changed' && p.value1.indexOf('jumped') !== -1;
+            }), 'line 1 should be a "changed" part carrying an inline diff, got: ' + types(parts));
+        });
+
+        test('spec: the bird line is removed outright', function () {
+            var parts = api.computeLineDiff(V1, V2, opts());
+            assert(textOf(parts, 1, 'delete').indexOf('A small bird') !== -1,
+                'expected a delete part containing the bird line');
+        });
+
+        test('spec: the rabbit line is added outright', function () {
+            var parts = api.computeLineDiff(V1, V2, opts());
+            assert(textOf(parts, 2, 'insert').indexOf('A rabbit watched') !== -1,
+                'expected an insert part containing the rabbit line');
+        });
+
+        test('spec: every original line survives into the left-hand output', function () {
+            var parts = api.computeLineDiff(V1, V2, opts());
+            var rebuilt = parts.map(function (p) {
+                if (p.type === 'insert') return '';
+                if (p.type === 'delete') return p.value;
+                return p.value1;
+            }).join('');
+            assertEqual(rebuilt, V1, 'left-hand reconstruction lost or duplicated text');
+        });
+
+        test('spec: every revised line survives into the right-hand output', function () {
+            var parts = api.computeLineDiff(V1, V2, opts());
+            var rebuilt = parts.map(function (p) {
+                if (p.type === 'delete') return '';
+                if (p.type === 'insert') return p.value;
+                return p.value2;
+            }).join('');
+            assertEqual(rebuilt, V2, 'right-hand reconstruction lost or duplicated text');
+        });
+
+        test('a pure insertion in the middle keeps the surrounding lines equal', function () {
+            var parts = api.computeLineDiff('a\nc', 'a\nb\nc', opts());
+            assertEqual(types(parts), 'equal,insert,equal', 'unexpected diff shape');
+        });
+
+        test('a pure deletion in the middle keeps the surrounding lines equal', function () {
+            var parts = api.computeLineDiff('a\nb\nc', 'a\nc', opts());
+            assertEqual(types(parts), 'equal,delete,equal', 'unexpected diff shape');
+        });
+
+        // ----------------------------------------------------------------
+        // Tokenizer and word diff
+        // ----------------------------------------------------------------
+
+        test('tokenizeText round-trips the original string', function () {
+            var input = 'Hello, world! (test)\tend';
+            var joined = api.tokenizeText(input).map(function (t) { return t.value; }).join('');
+            assertEqual(joined, input, 'tokenizer is lossy');
+        });
+
+        test('tokenizeText classifies words and separators', function () {
+            var tokens = api.tokenizeText('ab c');
+            assertEqual(tokens.length, 3, 'expected word, separator, word');
+            assertEqual(tokens[0].type, 'word');
+            assertEqual(tokens[1].type, 'separator');
+            assertEqual(tokens[2].type, 'word');
+        });
+
+        test('computeWordDiff round-trips both sides', function () {
+            var parts = api.computeWordDiff('the quick fox', 'the slow fox', opts());
+            var left = parts.map(function (p) {
+                if (p.type === 'insert') return '';
+                if (p.type === 'delete') return p.value;
+                return p.value1;
+            }).join('');
+            var right = parts.map(function (p) {
+                if (p.type === 'delete') return '';
+                if (p.type === 'insert') return p.value;
+                return p.value2;
+            }).join('');
+            assertEqual(left, 'the quick fox', 'left reconstruction failed');
+            assertEqual(right, 'the slow fox', 'right reconstruction failed');
+        });
+
+        test('computeWordDiff marks only the differing word', function () {
+            var parts = api.computeWordDiff('the quick fox', 'the slow fox', opts());
+            var deleted = parts.filter(function (p) { return p.type === 'delete'; })
+                .map(function (p) { return p.value; }).join('');
+            assertEqual(deleted, 'quick', 'expected only "quick" to be deleted');
+        });
+
+        // ----------------------------------------------------------------
+        // LCS primitive
+        // ----------------------------------------------------------------
+
+        test('computeLCSPairs on identical sequences pairs everything', function () {
+            var pairs = api.computeLCSPairs(['a', 'b', 'c'], ['a', 'b', 'c']);
+            assertEqual(pairs.length, 3);
+            assertEqual(JSON.stringify(pairs[0]), JSON.stringify({ i: 0, j: 0 }));
+            assertEqual(JSON.stringify(pairs[2]), JSON.stringify({ i: 2, j: 2 }));
+        });
+
+        test('computeLCSPairs on disjoint sequences pairs nothing', function () {
+            assertEqual(api.computeLCSPairs(['a', 'b'], ['c', 'd']).length, 0);
+        });
+
+        test('computeLCSPairs handles empty sequences', function () {
+            assertEqual(api.computeLCSPairs([], ['a']).length, 0);
+            assertEqual(api.computeLCSPairs(['a'], []).length, 0);
+        });
+
+        test('computeLCSPairs finds the classic ABCBDAB / BDCABA subsequence', function () {
+            var a = 'ABCBDAB'.split('');
+            var b = 'BDCABA'.split('');
+            assertEqual(api.computeLCSPairs(a, b).length, 4);
+        });
+
+        test('computeLCSPairs returns strictly increasing indices on both sides', function () {
+            var a = 'the quick brown fox jumps'.split(' ');
+            var b = 'the slow brown fox walks fast'.split(' ');
+            var pairs = api.computeLCSPairs(a, b);
+            for (var k = 1; k < pairs.length; k++) {
+                assert(pairs[k].i > pairs[k - 1].i, 'left indices not increasing');
+                assert(pairs[k].j > pairs[k - 1].j, 'right indices not increasing');
+            }
+            pairs.forEach(function (p) {
+                assertEqual(a[p.i], b[p.j], 'paired elements are not equal');
+            });
+        });
+
+        test('computeLCSPairs with a shared prefix and suffix pairs them', function () {
+            // Exercises the prefix/suffix trimming fast path and its index re-offset.
+            var a = ['x', 'x', 'a', 'y', 'y'];
+            var b = ['x', 'x', 'b', 'y', 'y'];
+            var pairs = api.computeLCSPairs(a, b);
+            assertEqual(pairs.length, 4, 'expected the two prefix and two suffix items');
+            assertEqual(JSON.stringify(pairs), JSON.stringify([
+                { i: 0, j: 0 }, { i: 1, j: 1 }, { i: 3, j: 3 }, { i: 4, j: 4 }
+            ]));
+        });
+
+        test('computeLCSPairs where one side is a prefix of the other', function () {
+            var pairs = api.computeLCSPairs(['a', 'b'], ['a', 'b', 'c']);
+            assertEqual(pairs.length, 2);
+        });
+
+        // ----------------------------------------------------------------
+        // Large inputs must degrade, not throw
+        // ----------------------------------------------------------------
+
+        test('a 5k-token single-line pair completes without throwing', function () {
+            var words = [];
+            for (var k = 0; k < 5000; k++) { words.push('w' + k); }
+            var line1 = words.join(' ');
+            var line2 = words.slice(0, 2500).concat(['DIFFERENT']).concat(words.slice(2501)).join(' ');
+            var parts = api.computeLineDiff(line1, line2, opts());
+            assert(parts.length > 0, 'no diff parts produced');
+            assert(!isEqualDiff(parts), 'expected a difference');
+        });
+
+        test('a large single-line pair renders end to end, not just diffs', function () {
+            // computeLineDiff stops at a "changed" part; the token-level
+            // allocation only happens once that part is rendered. This test has
+            // to go all the way through renderDiff to exercise it.
+            var words = [];
+            for (var k = 0; k < 6000; k++) { words.push('w' + k); }
+            var line1 = words.join(' ');
+            var line2 = words.slice(0, 3000).concat(['DIFFERENT']).concat(words.slice(3001)).join(' ');
+            var parts = api.computeLineDiff(line1, line2, opts());
+            var html = api.renderDiff(parts, opts());
+            assert(html.text1.length > 0 && html.text2.length > 0, 'nothing rendered');
+            assert(html.text2.indexOf('DIFFERENT') !== -1, 'the changed word is missing from the output');
+        });
+
+        test('two large unrelated single lines degrade instead of throwing', function () {
+            var a = [];
+            var b = [];
+            for (var k = 0; k < 6000; k++) { a.push('a' + k); b.push('b' + k); }
+            var parts = api.computeLineDiff(a.join(' '), b.join(' '), opts());
+            var html = api.renderDiff(parts, opts());
+            assert(parts.length > 0, 'no diff parts produced');
+            assert(html.text1.length > 0, 'nothing rendered');
+        });
+
+        test('the inline-diff gate budgets against all tokens, not just words', function () {
+            // Two long lines with nothing in common: the trim cannot shrink
+            // them, so the real table is token-sized and must be refused. Word
+            // counts alone would have cleared the budget and let it through.
+            var a = [];
+            var b = [];
+            for (var k = 0; k < 4900; k++) { a.push('a' + k); b.push('b' + k); }
+            var line1 = a.join(' ');
+            var line2 = b.join(' ');
+            assert(api.isLCSFeasible(4900, 4900),
+                'precondition: word counts alone fit the budget');
+            var span = api.trimmedSpan(api.tokenizeText(line1).map(function (t) { return t.value; }),
+                api.tokenizeText(line2).map(function (t) { return t.value; }));
+            assert(!api.isLCSFeasible(span.m, span.n),
+                'precondition: the real token span should exceed the budget');
+            assert(api.shouldShowInlineDiff(line1, line2, opts()) === false,
+                'gate passed a line pair whose token-level table exceeds MAX_LCS_CELLS');
+        });
+
+        test('REGRESSION: large identical inputs are still reported as identical', function () {
+            // The feasibility check used to run on untrimmed line counts, so two
+            // byte-identical files over ~5000 lines were reported as different.
+            var lines = [];
+            for (var k = 0; k < 6000; k++) { lines.push('line ' + k); }
+            var text = lines.join('\n');
+            var parts = api.computeLineDiff(text, text, opts());
+            assert(isEqualDiff(parts),
+                'identical text reported as different at ' + lines.length + ' lines');
+        });
+
+        test('REGRESSION: a small edit in a large file stays a small diff', function () {
+            var a = [];
+            for (var k = 0; k < 6000; k++) { a.push('line ' + k); }
+            var b = a.slice();
+            b.splice(3000, 3);
+            var parts = api.computeLineDiff(a.join('\n'), b.join('\n'), opts());
+            var deletes = parts.filter(function (p) { return p.type === 'delete'; }).length;
+            var inserts = parts.filter(function (p) { return p.type === 'insert'; }).length;
+            assertEqual(deletes, 3, 'expected exactly 3 deleted lines');
+            assertEqual(inserts, 0, 'expected no inserted lines');
+        });
+
+        test('REGRESSION: whitespace-only lines are not equal to blank ones', function () {
+            // normalizeForComparison used to collapse any line that trimmed to
+            // empty, so with "ignore spaces" OFF these reported as identical.
+            var parts = api.computeLineDiff('a\n\nb', 'a\n\t \nb', opts({ ignoreLineFeeds: true }));
+            assert(!isEqualDiff(parts),
+                'a tab-and-space line was treated as blank while ignoreSpaces was off');
+        });
+
+        test('whitespace-only lines ARE equal to blank ones when spaces are ignored', function () {
+            var parts = api.computeLineDiff('a\n\nb', 'a\n\t \nb',
+                opts({ ignoreLineFeeds: true, ignoreSpaces: true }));
+            assert(isEqualDiff(parts), 'got: ' + types(parts));
+        });
+
+        test('REGRESSION: a long near-identical paragraph still gets an inline diff', function () {
+            // The gate used to budget untrimmed token counts while the LCS
+            // budgeted the trimmed middle, so long-but-similar lines were
+            // needlessly demoted to a whole-line delete + insert.
+            var words = [];
+            for (var k = 0; k < 3000; k++) { words.push('word' + k); }
+            var line1 = words.join(' ');
+            var line2 = words.slice(0, 1500).concat(['CHANGED']).concat(words.slice(1501)).join(' ');
+            assert(api.shouldShowInlineDiff(line1, line2, opts()) === true,
+                'gate refused a cheap, nearly identical pair of long lines');
+            var parts = api.computeLineDiff(line1, line2, opts());
+            assertEqual(types(parts), 'changed', 'expected a single inline-changed line');
+        });
+
+        test('REGRESSION: over the cap the diff degrades gradually, not totally', function () {
+            // Differing first and last lines defeat the prefix/suffix trim and
+            // push the middle over the budget. The region used to be abandoned
+            // wholesale, turning a 3-line edit into thousands of changed lines.
+            var a = ['HEAD-A'];
+            var b = ['HEAD-B'];
+            for (var k = 0; k < 5100; k++) { a.push('line ' + k); b.push('line ' + k); }
+            b.splice(2550, 3);
+            a.push('TAIL-A');
+            b.push('TAIL-B');
+            var parts = api.computeLineDiff(a.join('\n'), b.join('\n'), opts());
+            var equals = parts.filter(function (p) { return p.type === 'equal'; }).length;
+            // Nearly everything is shared; a wholesale abandon would leave ~0.
+            assert(equals > 4000,
+                'expected most lines to still match, only ' + equals + ' did');
+        });
+
+        test('REGRESSION: a huge single line with one word changed stays fast', function () {
+            // computeLCSLength used to run untrimmed, so this froze the main
+            // thread for tens of seconds despite the change being one word.
+            var words = [];
+            for (var k = 0; k < 40000; k++) { words.push('word' + k); }
+            var line1 = words.join(' ');
+            var line2 = words.slice(0, 20000).concat(['CHANGED']).concat(words.slice(20001)).join(' ');
+            var t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+            api.computeLineDiff(line1, line2, opts());
+            var ms = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0;
+            assert(ms < 3000, 'took ' + Math.round(ms) + ' ms; expected well under 3000');
+        });
+
+        test('computeLCSLength trims but still returns the exact length', function () {
+            assertEqual(api.computeLCSLength(['a', 'b', 'c'], ['a', 'b', 'c']), 3);
+            assertEqual(api.computeLCSLength(['a', 'x', 'c'], ['a', 'y', 'c']), 2);
+            assertEqual(api.computeLCSLength(['a', 'b'], ['c', 'd']), 0);
+            assertEqual(api.computeLCSLength([], ['a']), 0);
+            assertEqual(api.computeLCSLength('ABCBDAB'.split(''), 'BDCABA'.split('')), 4);
+        });
+
+        test('computeLCSLength agrees with computeLCSPairs on random input', function () {
+            var alphabet = 'abc';
+            for (var t = 0; t < 400; t++) {
+                var a = [];
+                var b = [];
+                var la = t % 7;
+                var lb = (t * 3) % 7;
+                for (var k = 0; k < la; k++) a.push(alphabet[(t + k) % 3]);
+                for (var k2 = 0; k2 < lb; k2++) b.push(alphabet[(t * 2 + k2) % 3]);
+                assertEqual(api.computeLCSLength(a, b), api.computeLCSPairs(a, b).length,
+                    'disagreement on ' + JSON.stringify(a) + ' vs ' + JSON.stringify(b));
+            }
+        });
+
+        test('computeLCSPairs handles a single-element side exactly', function () {
+            // Guards the shape behind the non-terminating split: a one-element
+            // side cannot be halved. Note this exercises the DP path, not the
+            // over-budget branch — reaching that needs a >25M-element sequence,
+            // so the branch itself stays untested here by necessity.
+            var big = Math.ceil(Math.sqrt(api.MAX_LCS_CELLS)) + 1000;
+            var long = [];
+            for (var k = 0; k < big; k++) { long.push('x' + k); }
+
+            // One element on the left, a huge different range on the right,
+            // with the match deliberately placed in the middle.
+            var target = long[Math.floor(big / 2)];
+            var pairs = api.computeLCSPairs([target], long);
+            assertEqual(pairs.length, 1, 'expected exactly one match');
+            assertEqual(pairs[0].i, 0);
+            assertEqual(pairs[0].j, Math.floor(big / 2));
+
+            // And the mirror case
+            var mirrored = api.computeLCSPairs(long, [target]);
+            assertEqual(mirrored.length, 1, 'expected exactly one match (mirrored)');
+            assertEqual(mirrored[0].i, Math.floor(big / 2));
+            assertEqual(mirrored[0].j, 0);
+        });
+
+        test('computeLCSPairs over the cap keeps prefix and suffix matches', function () {
+            // Over budget the middle is skipped, but the trimmed ends are still
+            // real matches — the result must remain a valid common subsequence.
+            var big = Math.ceil(Math.sqrt(api.MAX_LCS_CELLS)) + 500;
+            var a = ['same-head'];
+            var b = ['same-head'];
+            for (var k = 0; k < big; k++) { a.push('a' + k); b.push('b' + k); }
+            a.push('same-tail');
+            b.push('same-tail');
+            var pairs = api.computeLCSPairs(a, b);
+            assert(pairs.length >= 2, 'prefix and suffix matches were lost');
+            pairs.forEach(function (p) {
+                assertEqual(a[p.i], b[p.j], 'returned a pair whose elements are not equal');
+            });
+            for (var q = 1; q < pairs.length; q++) {
+                assert(pairs[q].i > pairs[q - 1].i && pairs[q].j > pairs[q - 1].j,
+                    'indices not strictly increasing');
+            }
+        });
+
+        test('many-line inputs complete without throwing', function () {
+            var a = [];
+            var b = [];
+            for (var k = 0; k < 2000; k++) {
+                a.push('line ' + k);
+                b.push(k === 1000 ? 'line CHANGED' : 'line ' + k);
+            }
+            var parts = api.computeLineDiff(a.join('\n'), b.join('\n'), opts());
+            assert(!isEqualDiff(parts), 'expected a difference');
+        });
+
+        // ----------------------------------------------------------------
+        // Summary
+        // ----------------------------------------------------------------
+
+        var summary = document.getElementById('summary');
+        summary.className = failed === 0 ? 'pass' : 'fail';
+        summary.textContent = failed === 0
+            ? 'All ' + passed + ' tests passed.'
+            : failed + ' of ' + (passed + failed) + ' tests failed.';
+    })();
+    </script>
+</body>
+</html>
