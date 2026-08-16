@@ -43,10 +43,14 @@
         </div>
     </main>
 
+    <!-- Vendored as classic scripts: they publish globals (marked, DOMPurify,
+         TurndownService, turndownPluginGfm) that main.js and its imports pick
+         up. Classic scripts run during parsing, module scripts after it, so
+         the globals are always in place first. -->
     <script src="vendor/marked.min.js"></script>
     <script src="vendor/purify.min.js"></script>
     <script src="vendor/turndown.min.js"></script>
     <script src="vendor/turndown-plugin-gfm.min.js"></script>
-    <script src="script.js"></script>
+    <script type="module" src="main.js"></script>
 </body>
 </html>
