@@ -61,6 +61,17 @@ Markdown source on the left, live styled preview on the right, with synchronized
   [Turndown](tools/markdown-editor/vendor/turndown.min.js) (+ the GFM plugin) for the
   HTML→Markdown direction. All are checked in, so there is nothing to install and no CDN
   to depend on.
+- To refresh them, re-download the UMD builds into
+  [tools/markdown-editor/vendor/](tools/markdown-editor/vendor/); each publishes the global
+  the page expects. Note that marked ships its browser build as `lib/marked.umd.js` — the
+  `marked.min.js` entry point was dropped in v16.
+
+  ```bash
+  cd tools/markdown-editor/vendor
+  curl -sSL -o marked.min.js   https://cdn.jsdelivr.net/npm/marked@18/lib/marked.umd.js
+  curl -sSL -o purify.min.js   https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js
+  curl -sSL -o turndown.min.js https://cdn.jsdelivr.net/npm/turndown@7/dist/turndown.min.js
+  ```
 
 ## Tests
 

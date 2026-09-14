@@ -12,6 +12,11 @@
 
 /* global marked, DOMPurify */
 
+// Token types that render to nothing. They still occupy source lines, so
+// they count towards the running line number, but wrapping them would put
+// an empty div in the middle of a contenteditable pane.
+const INVISIBLE_TOKENS = new Set(['space', 'def']);
+
 /**
  * Render for the preview pane: each top-level block is wrapped in a div
  * carrying the source line it starts on, which is what the scroll sync
@@ -26,7 +31,7 @@ export function renderBlocks(text) {
 
     for (const token of tokens) {
         const lineCount = token.raw.split('\n').length - 1;
-        if (token.type !== 'space') {
+        if (!INVISIBLE_TOKENS.has(token.type)) {
             const blockTokens = [token];
             blockTokens.links = tokens.links;
             html += `<div class="md-block" data-line="${line}">` +
