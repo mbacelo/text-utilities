@@ -19,7 +19,7 @@ export function createStorage(key) {
     function write(value) {
         try {
             localStorage.setItem(key, value);
-        } catch (error) {
+        } catch {
             // Storage full or unavailable - nothing to do
         }
     }
@@ -29,7 +29,7 @@ export function createStorage(key) {
         read() {
             try {
                 return localStorage.getItem(key);
-            } catch (error) {
+            } catch {
                 return null;
             }
         },

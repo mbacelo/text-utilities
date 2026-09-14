@@ -58,7 +58,7 @@ async function copyOutput() {
     try {
         await navigator.clipboard.writeText(els.output.value);
         els.copyStatus.textContent = 'Copied!';
-    } catch (error) {
+    } catch {
         els.copyStatus.textContent = 'Copy failed';
     }
 }
