@@ -1,11 +1,10 @@
 /**
- * Step-through-the-differences control for a single result panel.
- *
- * One instance per panel, so nothing here needs to know which side it is
- * driving.
+ * Step-through-the-differences control for the result panel. Each stop is
+ * a hunk: a run of consecutive changed rows (see diff-render.js), so a block
+ * of ten removed lines is one stop, not ten.
  */
 
-const DIFF_SELECTOR = '.added, .removed, .line-added, .line-removed';
+const DIFF_SELECTOR = '.diff-hunk';
 
 /**
  * @param {Object} refs
@@ -40,7 +39,9 @@ export function createDiffNavigator({ panel, previousButton, nextButton, counter
 
         const current = diffs[index];
         current.classList.add('current-diff');
-        current.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+        // Centre short hunks; show tall ones from their first line
+        const block = current.offsetHeight > window.innerHeight / 2 ? 'start' : 'center';
+        current.scrollIntoView({ behavior: 'smooth', block, inline: 'nearest' });
 
         updateCounter();
     }

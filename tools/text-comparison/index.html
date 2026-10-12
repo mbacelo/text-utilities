@@ -17,29 +17,15 @@
 
         <h1>Text Comparison Tool</h1>
 
-        <form id="comparisonForm" class="comparison-form">
+        <form id="comparisonForm">
             <div class="input-section">
                 <div class="text-container">
-                    <label for="text1">
-                        <h2>Text 1</h2>
-                    </label>
-                    <textarea
-                        id="text1"
-                        name="text1"
-                        placeholder="Enter first text here..."
-                        aria-label="First text to compare"
-                        rows="10"></textarea>
+                    <h2 class="section-label"><label for="text1">Text 1</label></h2>
+                    <textarea id="text1" name="text1" placeholder="Enter first text here..." rows="10"></textarea>
                 </div>
                 <div class="text-container">
-                    <label for="text2">
-                        <h2>Text 2</h2>
-                    </label>
-                    <textarea
-                        id="text2"
-                        name="text2"
-                        placeholder="Enter second text here..."
-                        aria-label="Second text to compare"
-                        rows="10"></textarea>
+                    <h2 class="section-label"><label for="text2">Text 2</label></h2>
+                    <textarea id="text2" name="text2" placeholder="Enter second text here..." rows="10"></textarea>
                 </div>
             </div>
 
@@ -71,40 +57,26 @@
             <p>Processing comparison...</p>
         </div>
 
-        <div class="results-section" id="resultsSection" aria-live="polite">
-            <div class="status-message" id="statusMessage" role="alert"></div>
+        <div class="results-section" id="resultsSection">
+            <div class="status-message" id="statusMessage" role="status"></div>
 
-            <div class="comparison-display">
-                <div class="result-container">
-                    <div class="result-header">
-                        <h3>Text 1 (with differences)</h3>
-                        <div class="panel-navigation" id="diffNavigation1">
-                            <button type="button" class="nav-btn-small" id="prevDiffBtn1" aria-label="Go to previous difference in text 1" title="Previous diff (↑)">
+            <div class="result-container">
+                <div class="result-header">
+                    <h3 class="section-label">Text 1</h3>
+                    <div class="result-header-side">
+                        <h3 class="section-label">Text 2</h3>
+                        <div class="panel-navigation">
+                            <button type="button" class="nav-btn-small" id="prevDiffBtn" aria-label="Go to previous difference" title="Previous difference (↑)">
                                 <span aria-hidden="true">&#8593;</span>
                             </button>
-                            <span class="diff-counter-small" id="diffCounter1" aria-live="polite">-</span>
-                            <button type="button" class="nav-btn-small" id="nextDiffBtn1" aria-label="Go to next difference in text 1" title="Next diff (↓)">
+                            <span class="diff-counter-small" id="diffCounter" aria-live="polite">-</span>
+                            <button type="button" class="nav-btn-small" id="nextDiffBtn" aria-label="Go to next difference" title="Next difference (↓)">
                                 <span aria-hidden="true">&#8595;</span>
                             </button>
                         </div>
                     </div>
-                    <div class="result-text" id="result1" tabindex="0" role="group" aria-label="Text 1 comparison result. Use the up and down arrow keys to step through differences."></div>
                 </div>
-                <div class="result-container">
-                    <div class="result-header">
-                        <h3>Text 2 (with differences)</h3>
-                        <div class="panel-navigation" id="diffNavigation2">
-                            <button type="button" class="nav-btn-small" id="prevDiffBtn2" aria-label="Go to previous difference in text 2" title="Previous diff (↑)">
-                                <span aria-hidden="true">&#8593;</span>
-                            </button>
-                            <span class="diff-counter-small" id="diffCounter2" aria-live="polite">-</span>
-                            <button type="button" class="nav-btn-small" id="nextDiffBtn2" aria-label="Go to next difference in text 2" title="Next diff (↓)">
-                                <span aria-hidden="true">&#8595;</span>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="result-text" id="result2" tabindex="0" role="group" aria-label="Text 2 comparison result. Use the up and down arrow keys to step through differences."></div>
-                </div>
+                <div class="result-text" id="result" tabindex="0" role="group" aria-label="Comparison result, the two texts side by side. Use the up and down arrow keys to step through differences."></div>
             </div>
         </div>
     </main>

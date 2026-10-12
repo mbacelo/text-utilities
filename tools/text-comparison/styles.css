@@ -4,11 +4,6 @@
    (which must be linked before this file).
    ===================== */
 
-.comparison-form {
-    all: unset;
-    display: block;
-}
-
 /* =====================
    Input Section
    ===================== */
@@ -24,38 +19,12 @@
     flex-direction: column;
 }
 
-.text-container label {
-    display: block;
-}
-
-.text-container h2 {
-    color: var(--color-text-light);
+.text-container .section-label {
     margin-bottom: var(--spacing-sm);
-    font-size: 0.8em;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
 }
 
-textarea {
-    width: 100%;
+.text-container textarea {
     height: 300px;
-    padding: 15px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-md);
-    font-family: var(--font-mono);
-    font-size: 14px;
-    line-height: 1.5;
-    color: var(--color-text);
-    background: var(--color-surface);
-    resize: vertical;
-    transition: border-color var(--transition-speed), box-shadow var(--transition-speed);
-}
-
-textarea:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    box-shadow: var(--focus-ring);
 }
 
 /* =====================
@@ -72,31 +41,6 @@ textarea:focus {
     background: var(--color-bg-light);
     border-radius: var(--border-radius-md);
     border: 1px solid var(--color-border);
-}
-
-.option {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.option input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-    accent-color: var(--color-primary);
-}
-
-.option input[type="checkbox"]:focus-visible {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
-}
-
-.option label {
-    font-size: 0.95em;
-    color: var(--color-text);
-    cursor: pointer;
-    user-select: none;
 }
 
 /* =====================
@@ -196,14 +140,54 @@ textarea:focus {
     font-weight: 600;
 }
 
-/* =====================
-   Diff Navigation (Panel-based)
-   ===================== */
+.status-message.same {
+    background: var(--color-success-bg);
+    color: var(--color-success-text);
+    border: 1px solid var(--color-success-border);
+}
+
+.status-message.different {
+    background: var(--color-warning-bg);
+    color: var(--color-warning-text);
+    border: 1px solid var(--color-warning-border);
+}
+
+/* The result is one panel of aligned rows that scrolls with the page; the
+   header sticks to the top so the labels and navigation stay reachable. */
+.result-container {
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-md);
+}
+
 .result-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    padding: var(--spacing-sm) 0;
+    background: var(--color-bg-light);
+    border-bottom: 1px solid var(--color-border);
+    border-radius: var(--border-radius-md) var(--border-radius-md) 0 0;
+}
+
+/* Same horizontal inset as the cells below, so the labels line up with
+   the text they name */
+.result-header > .section-label,
+.result-header-side {
+    padding: 0 var(--spacing-md);
+}
+
+.result-header-side {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 15px;
+    gap: var(--spacing-sm);
+}
+
+.result-header .section-label {
+    white-space: nowrap;
 }
 
 .panel-navigation {
@@ -253,92 +237,70 @@ textarea:focus {
     text-align: center;
 }
 
-/* Highlight current diff */
-.current-diff {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
-    border-radius: var(--border-radius-sm);
-    position: relative;
-    animation: highlight-pulse 0.5s ease-out;
-}
-
-@keyframes highlight-pulse {
-    0% {
-        outline-color: transparent;
-    }
-    50% {
-        outline-color: var(--color-primary);
-    }
-    100% {
-        outline-color: var(--color-primary);
-    }
-}
-
-.status-message.same {
-    background: var(--color-success-bg);
-    color: var(--color-success-text);
-    border: 1px solid var(--color-success-border);
-}
-
-.status-message.different {
-    background: var(--color-warning-bg);
-    color: var(--color-warning-text);
-    border: 1px solid var(--color-warning-border);
-}
-
-.comparison-display {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--spacing-md);
-}
-
-.result-container {
-    background: var(--color-bg-light);
-    padding: var(--spacing-md);
-    border-radius: var(--border-radius-md);
-    border: 1px solid var(--color-border);
-    min-width: 0;
-    overflow: hidden;
-}
-
-.result-container h3 {
-    color: var(--color-text-light);
-    margin: 0;
-    font-size: 0.8em;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-}
-
 .result-text {
+    padding: var(--spacing-sm) 0;
     font-family: var(--font-mono);
     font-size: 14px;
-    line-height: 1.6;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    overflow-x: auto;
-    max-height: 600px;
-    overflow-y: auto;
+    /* 1.5 keeps rows a whole number of pixels tall at 14px and 12px, so
+       runs of coloured rows have no anti-aliased seams between them */
+    line-height: 1.5;
+    background: var(--color-surface);
+    border-radius: 0 0 var(--border-radius-md) var(--border-radius-md);
 }
 
-@media (min-width: 1600px) {
-    .result-text {
-        max-height: 700px;
-    }
-}
-
-@media (min-width: 2000px) {
-    .result-text {
-        max-height: 800px;
-    }
+.result-text:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
 }
 
 /* =====================
-   Diff Highlighting
+   Diff rows
    ===================== */
+.diff-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    /* Large diffs have tens of thousands of rows: skip layout and paint
+       for the ones off screen, sized as one line until first shown */
+    content-visibility: auto;
+    contain-intrinsic-block-size: auto 23px;
+}
 
-/* Inline word-level changes */
+.diff-cell {
+    min-width: 0;
+    padding: 1px var(--spacing-md);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+/* Divider between the two sides */
+.diff-cell + .diff-cell {
+    border-left: 1px solid var(--color-border);
+}
+
+/* An empty line still takes up a full line of height */
+.diff-cell:empty::before {
+    content: '\200b';
+}
+
+/* Stand-in for a line that only exists on the other side */
+.filler {
+    background: var(--color-bg-light);
+}
+
+/* Whole lines: colour and a marker bar, no strikethrough, so removed code
+   stays readable. The bar is a gradient stop rather than an inset shadow,
+   whose edges bleed a faint line between stacked rows. */
+.line-added {
+    background: linear-gradient(to right, var(--color-added-text) 3px, var(--color-added-bg) 0);
+    color: var(--color-added-text);
+}
+
+.line-removed {
+    background: linear-gradient(to right, var(--color-removed-text) 3px, var(--color-removed-bg) 0);
+    color: var(--color-removed-text);
+}
+
+/* Words inside a partially changed line */
 .added {
     background-color: var(--color-added-bg);
     color: var(--color-added-text);
@@ -354,40 +316,36 @@ textarea:focus {
     text-decoration: line-through;
 }
 
-/* Full line changes */
-.line-added {
-    background-color: var(--color-added-bg);
-    color: var(--color-added-text);
-    display: block;
-    padding: 4px 15px;
-    margin-left: -15px;
-    margin-right: -15px;
-    border-left: 3px solid var(--color-added-text);
-    border-radius: var(--border-radius-sm);
+/* Keep a hunk clear of the sticky header when it is scrolled to */
+.diff-hunk {
+    scroll-margin-top: 70px;
 }
 
-.line-removed {
-    background-color: var(--color-removed-bg);
-    color: var(--color-removed-text);
-    display: block;
-    padding: 4px 15px;
-    margin-left: -15px;
-    margin-right: -15px;
-    border-left: 3px solid var(--color-removed-text);
+/* Hunk the navigator is on */
+.current-diff {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -1px;
     border-radius: var(--border-radius-sm);
-    text-decoration: line-through;
+    animation: highlight-pulse 0.5s ease-out;
 }
 
-.unchanged {
-    color: var(--color-text);
+@keyframes highlight-pulse {
+    0% {
+        outline-color: transparent;
+    }
+    50% {
+        outline-color: var(--color-primary);
+    }
+    100% {
+        outline-color: var(--color-primary);
+    }
 }
 
 /* =====================
    Responsive Design
    ===================== */
 @media (max-width: 768px) {
-    .input-section,
-    .comparison-display {
+    .input-section {
         grid-template-columns: 1fr;
     }
 
@@ -398,5 +356,18 @@ textarea:focus {
 
     .compare-btn {
         width: 100%;
+    }
+
+    /* Rows stay side by side - that is what keeps them aligned - so make
+       room for the text instead */
+    .result-text {
+        font-size: 12px;
+    }
+
+    .diff-cell,
+    .result-header > .section-label,
+    .result-header-side {
+        padding-left: var(--spacing-sm);
+        padding-right: var(--spacing-sm);
     }
 }

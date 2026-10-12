@@ -27,17 +27,20 @@ Nothing is compiled and nothing is installed at runtime.
 Compares two texts side by side and highlights every difference: line-level additions and
 removals, plus word-level highlighting inside lines that only changed a little.
 
-- Ignore options: case, spaces, line feeds, and escape sequences (`\n`, `\"`, `\t`).
-- Per-panel navigation between differences, with <kbd>↑</kbd> / <kbd>↓</kbd> keyboard support
-  when a result panel has focus.
+- Results are aligned row by row, so every line sits next to its counterpart however either
+  side wraps; a line that exists on one side only faces an empty filler.
+- Ignore options: case, spaces, line feeds, and escape sequences (`\n`, `\"`, `\t`). When no
+  differences remain, the verdict names the options that were ignored.
+- Step through the changes (each run of consecutive changed lines is one stop) with the
+  buttons, or <kbd>↑</kbd> / <kbd>↓</kbd> when the result panel has focus.
 - The diff runs in a [Web Worker](tools/text-comparison/diff-worker.js), so the page stays
   responsive on large inputs and a superseded comparison is cancelled outright.
 - Diffing uses an LCS dynamic-programming table. Because the DP is O(m·n) in time and memory,
   the table is capped at `MAX_LCS_CELLS` ([diff-engine.js:15](tools/text-comparison/diff-engine.js#L15));
   regions past the cap are split and diffed piecewise rather than exhausting the tab.
 
-[diff behavior.txt](tools/text-comparison/diff%20behavior.txt) documents the expected diff
-output for a worked example.
+[test/diff-behavior.txt](test/diff-behavior.txt) documents the expected diff output for a
+worked example.
 
 ### [Line Break Converter](tools/line-converter/index.html)
 
@@ -47,14 +50,19 @@ but any direction works.
 - Built-in separators (line break, comma, semicolon, space, tab) plus custom strings for both
   split and join.
 - Optional per-item template using `{text}` as the placeholder, e.g. `'{text}'` to quote items.
-- Toggles to trim each item and drop empty ones; live item count and one-click copy.
+- Toggles to trim each item and drop empty ones; one-click copy.
+- The output and item count update as you type or change any option.
 
 ### [Markdown Editor](tools/markdown-editor/index.html)
 
 Markdown source on the left, live styled preview on the right, with synchronized scrolling.
 
-- The preview is `contenteditable`: type in it or paste rich text (Word, Google Docs, a web
-  page) and the Markdown source updates to match.
+- Paste rich text (Word, Google Docs, a web page) into the preview with
+  <kbd>Ctrl</kbd>+<kbd>V</kbd> (<kbd>⌘</kbd><kbd>V</kbd> on a Mac): just the pasted fragment is
+  converted to Markdown and inserted at the editor's cursor, as an ordinary undoable edit. The
+  source is never regenerated from the preview, so nothing you wrote gets reformatted. The
+  preview is read-only, so browsers offer no right-click or touch "Paste" there - use the
+  keyboard shortcut.
 - Copy Markdown or copy rendered HTML; content is persisted in `localStorage`.
 - Rendering uses vendored copies of [marked](tools/markdown-editor/vendor/marked.min.js),
   [DOMPurify](tools/markdown-editor/vendor/purify.min.js) for sanitising, and

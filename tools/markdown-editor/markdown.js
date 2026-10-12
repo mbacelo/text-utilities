@@ -13,8 +13,8 @@
 /* global marked, DOMPurify */
 
 // Token types that render to nothing. They still occupy source lines, so
-// they count towards the running line number, but wrapping them would put
-// an empty div in the middle of a contenteditable pane.
+// they count towards the running line number, but wrapping them would only
+// add empty divs to the preview.
 const INVISIBLE_TOKENS = new Set(['space', 'def']);
 
 /**

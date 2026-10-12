@@ -18,15 +18,13 @@ self.addEventListener('message', ({ data }) => {
 
     try {
         const parts = computeLineDiff(text1, text2, options);
-        const html = renderDiff(parts, options);
 
         self.postMessage({
             ok: true,
             // Derived from the very parts that were rendered, so the verdict
-            // can never contradict the panels below it.
+            // can never contradict the panel below it.
             equal: parts.every(part => part.type === 'equal'),
-            html1: html.text1,
-            html2: html.text2
+            html: renderDiff(parts, options)
         });
     } catch (error) {
         self.postMessage({ ok: false, message: error.message });

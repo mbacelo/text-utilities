@@ -34,8 +34,6 @@ export function createStorage(key) {
             }
         },
 
-        write,
-
         /** Coalesce bursts of keystrokes into a single write. */
         writeDebounced(value) {
             clearTimeout(timer);

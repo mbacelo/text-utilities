@@ -65,7 +65,7 @@ export function series(count, prefix = 'line ') {
     return Array.from({ length: count }, (_, index) => `${prefix}${index}`);
 }
 
-// The worked example documented in "diff behavior.txt".
+// The worked example documented in diff-behavior.txt.
 export const SPEC_V1 = [
     'The quick brown fox jumped over the lazy dog.',
     'It was a sunny day, and everything felt peaceful in the meadow.',

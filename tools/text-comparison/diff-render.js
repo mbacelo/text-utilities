@@ -1,9 +1,14 @@
 /**
- * Turns diff parts into the HTML the result panels display.
+ * Turns diff parts into the HTML the result panel displays.
+ *
+ * Every part becomes one row with a cell per side, so the two texts stay
+ * aligned line for line however either side wraps; a line that exists on
+ * one side only is paired with an empty filler cell. Consecutive changed
+ * rows are grouped into a hunk, which is what the navigator steps through.
  *
  * Pure string work with no DOM access, so it runs inside the worker and
  * under `node --test` alongside the engine. Every value that reaches the
- * output goes through escapeHtml first - the panels are filled with
+ * output goes through escapeHtml first - the panel is filled with
  * innerHTML, so this module is the only thing standing between user input
  * and executable markup.
  */
@@ -28,6 +33,25 @@ export function escapeHtml(text) {
 }
 
 /**
+ * Parts keep their trailing line break so they reconstruct the original
+ * text exactly. A row already is a line, so the break is dropped for display.
+ * @param {string} value
+ * @returns {string}
+ */
+function stripBreak(value) {
+    return value.endsWith('\n') ? value.slice(0, -1) : value;
+}
+
+/**
+ * @param {string} html - Already-escaped cell content
+ * @param {string} [modifier] - Extra class for the cell
+ * @returns {string}
+ */
+function cell(html, modifier) {
+    return `<div class="diff-cell${modifier ? ` ${modifier}` : ''}">${html}</div>`;
+}
+
+/**
  * Render a word-level diff of two lines that changed only partially
  * @param {string} line1 - First line
  * @param {string} line2 - Second line
@@ -41,8 +65,8 @@ export function computeInlineDiff(line1, line2, options) {
     for (const part of computeWordDiff(line1, line2, options)) {
         if (part.type === 'equal') {
             // Each side keeps its own value, so ignored case survives display
-            html1.push(`<span class="unchanged">${escapeHtml(part.value1)}</span>`);
-            html2.push(`<span class="unchanged">${escapeHtml(part.value2)}</span>`);
+            html1.push(escapeHtml(part.value1));
+            html2.push(escapeHtml(part.value2));
         } else if (part.type === 'delete') {
             html1.push(`<span class="removed">${escapeHtml(part.value)}</span>`);
         } else {
@@ -54,31 +78,48 @@ export function computeInlineDiff(line1, line2, options) {
 }
 
 /**
- * Render computed diff parts as HTML for both panels
+ * Both cells of the row for one diff part.
+ * @param {Object} part - Diff part from computeLineDiff
+ * @param {Object} options - Comparison options
+ * @returns {string}
+ */
+function renderCells(part, options) {
+    if (part.type === 'equal') {
+        return cell(escapeHtml(stripBreak(part.value1))) +
+            cell(escapeHtml(stripBreak(part.value2)));
+    }
+    if (part.type === 'delete') {
+        return cell(escapeHtml(stripBreak(part.value)), 'line-removed') + cell('', 'filler');
+    }
+    if (part.type === 'insert') {
+        return cell('', 'filler') + cell(escapeHtml(stripBreak(part.value)), 'line-added');
+    }
+    const inline = computeInlineDiff(stripBreak(part.value1), stripBreak(part.value2), options);
+    return cell(inline.text1) + cell(inline.text2);
+}
+
+/**
+ * Render computed diff parts as aligned rows, grouping runs of changes
+ * into hunks.
  * @param {Array<Object>} parts - Diff parts from computeLineDiff
  * @param {Object} options - Comparison options
- * @returns {Object} Object with text1 and text2 HTML strings
+ * @returns {string} HTML for the result panel
  */
 export function renderDiff(parts, options) {
-    // Arrays rather than string concatenation: large diffs build tens of
+    // An array rather than string concatenation: large diffs build tens of
     // thousands of fragments.
-    const html1 = [];
-    const html2 = [];
+    const html = [];
+    let inHunk = false;
 
     for (const part of parts) {
-        if (part.type === 'equal') {
-            html1.push(`<span class="unchanged">${escapeHtml(part.value1)}</span>`);
-            html2.push(`<span class="unchanged">${escapeHtml(part.value2)}</span>`);
-        } else if (part.type === 'delete') {
-            html1.push(`<span class="line-removed">${escapeHtml(part.value)}</span>`);
-        } else if (part.type === 'insert') {
-            html2.push(`<span class="line-added">${escapeHtml(part.value)}</span>`);
-        } else {
-            const inline = computeInlineDiff(part.value1, part.value2, options);
-            html1.push(inline.text1);
-            html2.push(inline.text2);
+        const isChange = part.type !== 'equal';
+        if (isChange !== inHunk) {
+            html.push(isChange ? '<div class="diff-hunk">' : '</div>');
+            inHunk = isChange;
         }
+        html.push(`<div class="diff-row">${renderCells(part, options)}</div>`);
     }
+    if (inHunk) html.push('</div>');
 
-    return { text1: html1.join(''), text2: html2.join('') };
+    return html.join('');
 }

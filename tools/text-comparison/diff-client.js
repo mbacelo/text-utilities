@@ -13,7 +13,7 @@ export class SupersededError extends Error {
 
 /**
  * Create a diff runner backed by a worker.
- * @returns {{run: (request: Object) => Promise<Object>, dispose: () => void}}
+ * @returns {{run: (request: Object) => Promise<Object>}}
  */
 export function createDiffClient() {
     let worker = null;
@@ -76,11 +76,6 @@ export function createDiffClient() {
                 pending = { resolve, reject };
                 worker.postMessage(request);
             });
-        },
-
-        dispose() {
-            discardWorker();
-            resolvePending(({ reject }) => reject(new SupersededError()));
         }
     };
 }

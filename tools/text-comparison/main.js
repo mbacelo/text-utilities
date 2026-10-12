@@ -8,26 +8,27 @@
 import { createDiffClient, SupersededError } from './diff-client.js';
 import { createDiffNavigator } from './diff-navigator.js';
 
+// Each ignore option's checkbox id, with how the verdict names it
+const IGNORE_OPTIONS = {
+    ignoreCase: 'case',
+    ignoreSpaces: 'spaces',
+    ignoreLineFeeds: 'line feeds',
+    ignoreEscapeSequences: 'escape sequences'
+};
+
 const ELEMENT_IDS = [
+    ...Object.keys(IGNORE_OPTIONS),
     'comparisonForm',
     'text1',
     'text2',
-    'ignoreCase',
-    'ignoreSpaces',
-    'ignoreLineFeeds',
-    'ignoreEscapeSequences',
     'loadingSpinner',
     'resultsSection',
     'statusMessage',
-    'result1',
-    'result2',
+    'result',
     'compareBtn',
-    'prevDiffBtn1',
-    'nextDiffBtn1',
-    'diffCounter1',
-    'prevDiffBtn2',
-    'nextDiffBtn2',
-    'diffCounter2'
+    'prevDiffBtn',
+    'nextDiffBtn',
+    'diffCounter'
 ];
 
 /**
@@ -44,32 +45,38 @@ function findElements() {
     }));
 }
 
+/**
+ * "No differences" only ever means "none once the ignored ones are set
+ * aside", so say which ones were - otherwise "Hello" and "hello" would be
+ * announced as identical.
+ * @param {Object} options - The options the comparison ran with
+ * @returns {string}
+ */
+function describeNoDifferences(options) {
+    const ignored = Object.keys(IGNORE_OPTIONS)
+        .filter(key => options[key])
+        .map(key => IGNORE_OPTIONS[key]);
+
+    return ignored.length === 0
+        ? 'No differences found.'
+        : `No differences found, ignoring ${new Intl.ListFormat('en').format(ignored)}.`;
+}
+
 function init() {
     const elements = findElements();
     const client = createDiffClient();
 
-    const navigators = [
-        createDiffNavigator({
-            panel: elements.result1,
-            previousButton: elements.prevDiffBtn1,
-            nextButton: elements.nextDiffBtn1,
-            counter: elements.diffCounter1
-        }),
-        createDiffNavigator({
-            panel: elements.result2,
-            previousButton: elements.prevDiffBtn2,
-            nextButton: elements.nextDiffBtn2,
-            counter: elements.diffCounter2
-        })
-    ];
+    const diffNavigator = createDiffNavigator({
+        panel: elements.result,
+        previousButton: elements.prevDiffBtn,
+        nextButton: elements.nextDiffBtn,
+        counter: elements.diffCounter
+    });
 
     function readOptions() {
-        return {
-            ignoreCase: elements.ignoreCase.checked,
-            ignoreSpaces: elements.ignoreSpaces.checked,
-            ignoreLineFeeds: elements.ignoreLineFeeds.checked,
-            ignoreEscapeSequences: elements.ignoreEscapeSequences.checked
-        };
+        return Object.fromEntries(
+            Object.keys(IGNORE_OPTIONS).map(key => [key, elements[key].checked])
+        );
     }
 
     function setBusy(isBusy) {
@@ -83,19 +90,18 @@ function init() {
         elements.statusMessage.className = `status-message ${kind}`;
     }
 
-    /** Paint both panels and re-point the navigators at the new content. */
-    function showResult({ equal, html1, html2 }) {
+    /** Paint the panel and re-point the navigator at the new content. */
+    function showResult({ equal, html }, options) {
         showStatus(
-            equal ? 'Texts are exactly the same!' : 'Texts are different!',
+            equal ? describeNoDifferences(options) : 'Texts are different!',
             equal ? 'same' : 'different'
         );
 
         // Safe: every value was escaped by diff-render before it got here.
-        elements.result1.innerHTML = html1;
-        elements.result2.innerHTML = html2;
+        elements.result.innerHTML = html;
 
         setBusy(false);
-        navigators.forEach(navigator => navigator.refresh());
+        diffNavigator.refresh();
     }
 
     function showFailure(error) {
@@ -106,9 +112,8 @@ function init() {
             'different'
         );
         // Clear any stale results rather than leaving them under a failure
-        elements.result1.innerHTML = '';
-        elements.result2.innerHTML = '';
-        navigators.forEach(navigator => navigator.refresh());
+        elements.result.innerHTML = '';
+        diffNavigator.refresh();
         elements.resultsSection.classList.add('visible');
     }
 
@@ -116,12 +121,16 @@ function init() {
         event.preventDefault();
         setBusy(true);
 
+        // Read once: the verdict has to describe the options this run used,
+        // even if a checkbox is toggled while it is in flight.
+        const options = readOptions();
+
         try {
             showResult(await client.run({
                 text1: elements.text1.value,
                 text2: elements.text2.value,
-                options: readOptions()
-            }));
+                options
+            }), options);
         } catch (error) {
             // A newer comparison is already in flight and owns the UI
             if (error instanceof SupersededError) return;
@@ -130,7 +139,7 @@ function init() {
     }
 
     /**
-     * Arrow keys step both panels together. Scoped to the result panels
+     * Arrow keys step through the differences. Scoped to the result panel
      * rather than the document: bound globally it swallowed every
      * ArrowUp/ArrowDown once results were visible, which killed keyboard
      * page scrolling for the rest of the session.
@@ -141,29 +150,21 @@ function init() {
         // history), never to us
         if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return;
 
-        // Never steal keys from anything the user can type into
-        const { target } = event;
-        if (target.isContentEditable ||
-            ['TEXTAREA', 'INPUT', 'SELECT'].includes(target.tagName)) {
-            return;
-        }
-
-        // With nothing to navigate to, leave the key alone so the panel can
+        // With nothing to navigate to, leave the key alone so the page can
         // still be scrolled with the keyboard.
-        if (navigators.every(navigator => navigator.isEmpty)) return;
+        if (diffNavigator.isEmpty) return;
 
         if (event.key === 'ArrowDown') {
             event.preventDefault();
-            navigators.forEach(navigator => navigator.next());
+            diffNavigator.next();
         } else if (event.key === 'ArrowUp') {
             event.preventDefault();
-            navigators.forEach(navigator => navigator.previous());
+            diffNavigator.previous();
         }
     }
 
     elements.comparisonForm.addEventListener('submit', compareTexts);
-    elements.result1.addEventListener('keydown', handleKeyboardNavigation);
-    elements.result2.addEventListener('keydown', handleKeyboardNavigation);
+    elements.result.addEventListener('keydown', handleKeyboardNavigation);
 }
 
 try {

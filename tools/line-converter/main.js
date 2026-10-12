@@ -7,9 +7,9 @@
 import { SEPARATORS, convert } from './convert.js';
 
 const ELEMENT_IDS = [
-    'findSep', 'findCustom', 'replaceSep', 'replaceCustom', 'template',
+    'converter', 'findSep', 'findCustom', 'replaceSep', 'replaceCustom', 'template',
     'trimItems', 'removeEmpty', 'input', 'output', 'inputMeta',
-    'convertBtn', 'copyBtn', 'clearBtn', 'copyStatus'
+    'copyBtn', 'clearBtn', 'copyStatus'
 ];
 
 const els = Object.fromEntries(
@@ -28,7 +28,15 @@ function resolveSeparator(select, customInput) {
         : SEPARATORS[select.value] ?? '';
 }
 
+/** Show or hide each custom-separator input based on its select. */
+function syncCustomVisibility() {
+    els.findCustom.hidden = els.findSep.value !== 'custom';
+    els.replaceCustom.hidden = els.replaceSep.value !== 'custom';
+}
+
 function runConversion() {
+    syncCustomVisibility();
+
     const { items, output } = convert({
         text: els.input.value,
         splitOn: resolveSeparator(els.findSep, els.findCustom),
@@ -42,12 +50,6 @@ function runConversion() {
     els.inputMeta.textContent = `${items.length} item${items.length === 1 ? '' : 's'}`;
     // Any stale copy confirmation no longer describes what is on screen
     els.copyStatus.textContent = '';
-}
-
-/** Show or hide each custom-separator input based on its select. */
-function syncCustomVisibility() {
-    els.findCustom.hidden = els.findSep.value !== 'custom';
-    els.replaceCustom.hidden = els.replaceSep.value !== 'custom';
 }
 
 async function copyOutput() {
@@ -65,18 +67,16 @@ async function copyOutput() {
 
 function clearInput() {
     els.input.value = '';
-    els.output.value = '';
-    els.inputMeta.textContent = '0 items';
-    els.copyStatus.textContent = '';
+    runConversion();
     els.input.focus();
 }
 
-// Conversion only runs on an explicit Convert; changing a separator just
-// shows or hides its custom input.
-els.convertBtn.addEventListener('click', runConversion);
-els.findSep.addEventListener('change', syncCustomVisibility);
-els.replaceSep.addEventListener('change', syncCustomVisibility);
+// Conversion is cheap, so every edit to any control re-runs it: the output
+// and item count can never describe stale input. Text fields, selects and
+// checkboxes all fire `input`, and it bubbles up to the converter.
+els.converter.addEventListener('input', runConversion);
 els.copyBtn.addEventListener('click', copyOutput);
 els.clearBtn.addEventListener('click', clearInput);
 
-syncCustomVisibility();
+// Also picks up any values the browser restored on back/forward navigation
+runConversion();
