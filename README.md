@@ -88,6 +88,16 @@ Reads barcodes and QR codes from the camera or from an image, shows the value an
 - On a phone the page leads with one **Scan barcode** button that opens the back camera. Once
   camera access has been granted, opening the page starts scanning straight away. Point the
   camera at a code inside the frame: it stops, vibrates and shows the value.
+- Zoom buttons on the camera view help with small barcodes: zoom in and move the phone back
+  until the code is sharp. Where the browser can control the camera's zoom (Chrome on Android),
+  the buttons zoom the camera itself, and the phone may switch to its telephoto lens. Elsewhere
+  (Safari, most webcams) the picture is enlarged on screen and only the enlarged area is decoded.
+  A high resolution is requested so that area is still made of real camera pixels. Where the
+  phone lists a telephoto lens of its own (iPhone), a **Tele** button switches to it.
+- On iPhones the page prefers the "Triple" or "Dual Wide" virtual camera, which switches lenses by
+  itself the way the Camera app does. Pro models can't focus closer than about 15 cm with the
+  plain wide lens, so with it a close-up barcode stays blurred. The camera and zoom last used
+  are remembered for the next visit.
 - On a desktop the page leads with a drop zone: paste a screenshot (<kbd>Ctrl</kbd>+<kbd>V</kbd>
   anywhere on the page), drop an image, or click to choose one. The webcam is a secondary button.
   Uploading also works on phones, where the browser offers to take a photo.
@@ -135,6 +145,7 @@ node --test --test-name-pattern="sentinel" # one test, or a group
 ```
 index.html                  catalog of tools
 shared/styles.css           shared design tokens and base styles
+shared/storage.js           best-effort localStorage wrapper
 tools/<tool>/index.html     tool page
 tools/<tool>/main.js        entry module — DOM wiring only
 tools/<tool>/*.js           supporting modules, DOM-free where possible

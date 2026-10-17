@@ -19,9 +19,70 @@
     display: none !important;
 }
 
+.icon {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* =====================
+   Buttons
+   One shape for every button on the page; the scan button is the only
+   filled one, and only where the camera is the main way in.
+   ===================== */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 0 20px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-md);
+    background: var(--color-surface);
+    color: var(--color-primary);
+    font-family: inherit;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.btn:hover {
+    border-color: var(--color-primary);
+    background: var(--color-accent-soft);
+}
+
+.btn:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 3px;
+}
+
+.btn-small {
+    min-height: 40px;
+    padding: 0 14px;
+    font-size: 0.9em;
+}
+
+.btn-small .icon {
+    width: 18px;
+    height: 18px;
+}
+
+/* The file input is visually hidden; show its focus on whatever opens it */
+.scanner-page:has(#fileInput:focus-visible) .upload-trigger {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 3px;
+}
+
 /* =====================
    Start: scan button + drop zone
-   On a phone the camera leads; with a mouse, pasting or dropping does.
+   With a mouse, pasting or dropping leads; on a phone the camera does.
    ===================== */
 .start {
     display: flex;
@@ -32,26 +93,6 @@
 .scan-btn {
     order: 2;
     align-self: center;
-    padding: 10px 22px;
-    background: var(--color-accent-soft);
-    color: var(--color-primary);
-    border: none;
-    border-radius: var(--border-radius-md);
-    font-family: inherit;
-    font-size: 0.95em;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s;
-}
-
-.scan-btn:hover {
-    background: var(--color-primary);
-    color: white;
-}
-
-.scan-btn:focus-visible {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 4px;
 }
 
 .drop-zone {
@@ -60,8 +101,8 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    min-height: 200px;
+    gap: 6px;
+    min-height: 220px;
     padding: var(--spacing-lg) var(--spacing-md);
     border: 2px dashed var(--color-border);
     border-radius: var(--border-radius-md);
@@ -72,15 +113,18 @@
     transition: border-color var(--transition-speed), background var(--transition-speed);
 }
 
+.drop-zone .icon {
+    width: 36px;
+    height: 36px;
+    margin-bottom: 6px;
+    color: var(--color-primary);
+    stroke-width: 1.5;
+}
+
 .drop-zone:hover,
 .drop-zone.is-dragging {
     border-color: var(--color-primary);
     background: var(--color-accent-soft);
-}
-
-#fileInput:focus-visible + .drop-zone {
-    border-color: var(--color-primary);
-    box-shadow: var(--focus-ring);
 }
 
 .drop-title {
@@ -110,11 +154,12 @@ kbd {
 
 /* =====================
    Camera
+   Controls sit on the video, as in a phone's camera app: stop in the
+   corner, upload and switch along the bottom edge.
    ===================== */
 .camera {
     display: flex;
     flex-direction: column;
-    align-items: center;
     gap: var(--spacing-sm);
 }
 
@@ -122,7 +167,7 @@ kbd {
     position: relative;
     width: 100%;
     aspect-ratio: 4 / 3;
-    max-height: 65vh;
+    max-height: 70vh;
     overflow: hidden;
     border-radius: var(--border-radius-md);
     background: #000;
@@ -148,15 +193,107 @@ kbd {
     pointer-events: none;
 }
 
+.stage-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 0 14px 0 12px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 999px;
+    background: rgba(20, 22, 40, 0.55);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.85em;
+    white-space: nowrap;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.stage-btn:hover {
+    background: rgba(20, 22, 40, 0.8);
+}
+
+.stage-btn:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
+.stage-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 44px;
+    padding: 0;
+    justify-content: center;
+}
+
+.stage-bar {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+/* Lens-selector style zoom control, top left of the video, clear of the
+   close button even with five levels on a narrow phone */
+.zoom-bar {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    display: flex;
+    padding: 3px;
+    border-radius: 999px;
+    background: rgba(20, 22, 40, 0.55);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+}
+
+.zoom-chip {
+    min-width: 36px;
+    height: 38px;
+    padding: 0 7px;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.8em;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.zoom-chip:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.zoom-chip:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 1px;
+}
+
+.zoom-chip[aria-pressed="true"] {
+    background: #fff;
+    color: var(--color-text);
+}
+
+/* The page scales the video for digital zoom */
+.camera-stage video {
+    transform-origin: center;
+    transition: transform 0.2s;
+}
+
 .camera-hint {
     font-size: 0.9em;
     color: var(--color-text-light);
     text-align: center;
-}
-
-.camera-actions {
-    display: flex;
-    gap: var(--spacing-sm);
 }
 
 /* =====================
@@ -171,35 +308,20 @@ kbd {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-sm);
-    margin-top: var(--spacing-sm);
 }
 
 .result-item {
     display: grid;
     grid-template-columns: 1fr auto;
     grid-template-areas:
-        "format copy"
-        "text   text";
+        "text   text"
+        "format copy";
     align-items: center;
-    gap: 8px var(--spacing-sm);
+    gap: 12px var(--spacing-sm);
     padding: var(--spacing-md);
     border: 1px solid var(--color-success-border);
     border-radius: var(--border-radius-md);
     background: var(--color-success-bg);
-}
-
-.result-format {
-    grid-area: format;
-    justify-self: start;
-    font-size: 0.75em;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--color-success-text);
-}
-
-.result-item .text-btn {
-    grid-area: copy;
 }
 
 .result-text {
@@ -211,6 +333,31 @@ kbd {
     overflow-wrap: anywhere;
     /* One tap or click selects the whole value */
     user-select: all;
+}
+
+.result-format {
+    grid-area: format;
+    font-size: 0.9em;
+    font-weight: 600;
+    color: var(--color-success-text);
+}
+
+.copy-btn {
+    grid-area: copy;
+}
+
+.copy-btn .icon-check,
+.copy-btn.is-copied .icon-copy {
+    display: none;
+}
+
+.copy-btn.is-copied .icon-check {
+    display: block;
+}
+
+.copy-btn.is-copied {
+    border-color: var(--color-success-border);
+    color: var(--color-success-text);
 }
 
 /* =====================
@@ -248,30 +395,45 @@ kbd {
         display: inline;
     }
 
-    /* The camera is the main event: one big, obvious button */
+    /* The camera is the main event: one big, filled button */
     .scan-btn {
         order: 1;
         align-self: stretch;
-        padding: 20px;
+        min-height: 60px;
+        border-color: var(--color-primary);
         background: var(--color-primary);
-        color: white;
-        font-size: 1.2em;
-        border-radius: var(--border-radius-md);
+        color: #fff;
+        font-size: 1.15em;
     }
 
     .scan-btn:hover {
+        border-color: var(--color-primary-dark);
         background: var(--color-primary-dark);
     }
 
-    /* The drop zone becomes a plain secondary button */
+    .scan-btn .icon {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* The drop zone becomes a secondary button, styled like .btn */
     .drop-zone {
         order: 2;
-        min-height: 0;
-        padding: 14px;
+        flex-direction: row;
+        gap: 8px;
+        min-height: 52px;
+        padding: 0 20px;
         border: 1px solid var(--color-border);
         background: var(--color-surface);
         color: var(--color-primary);
         font-weight: 600;
+    }
+
+    .drop-zone .icon {
+        width: 20px;
+        height: 20px;
+        margin: 0;
+        stroke-width: 2;
     }
 }
 
@@ -291,5 +453,24 @@ kbd {
 
     .tool-intro {
         margin-bottom: var(--spacing-md);
+    }
+}
+
+/* Too narrow for two labelled buttons side by side on the video:
+   keep the icons, hide the words visually but not from screen readers */
+@media (max-width: 374px) {
+    .stage-bar .stage-btn {
+        width: 44px;
+        padding: 0;
+        justify-content: center;
+    }
+
+    .stage-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
     }
 }

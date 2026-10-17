@@ -1,21 +1,34 @@
 /**
  * Barcode Scanner - camera.
  *
- * Owns the MediaStream and the scan loop. Each pass grabs just the
+ * Owns the MediaStream, zoom and the scan loop. Each pass grabs just the
  * viewfinder part of the current frame and decodes it; the next pass is
  * only scheduled once that decode has finished, so slow devices never
  * build up a queue of frames.
+ *
+ * Zoom is real where the browser exposes it (Chrome on Android, where the
+ * phone may also switch to its telephoto lens) and digital elsewhere
+ * (Safari, most webcams): the video is scaled up on screen and the
+ * viewfinder crop shrinks with it. Digital zoom adds no detail of its own,
+ * which is why a high resolution is requested: zoomed in, the crop is
+ * still made of real camera pixels.
  */
 
-import { createConfirmer, viewfinderCrop } from './scan-logic.js';
+import { createConfirmer, defaultZoom, fitWithin, viewfinderCrop, zoomLevels } from './scan-logic.js';
 
 /** Pause between decodes; plenty for a hand-held scan, easy on the battery. */
 const SCAN_INTERVAL_MS = 80;
 
-/** Back camera on phones, the default webcam elsewhere; 1D codes need pixels. */
+/**
+ * Viewfinder crops are scaled down to this before decoding, so a high
+ * resolution stream at 1x zoom costs no more to decode than a small one.
+ */
+const MAX_FRAME_EDGE = 2048;
+
+/** High resolution, for digital zoom; the browser picks the nearest it has. */
 const BASE_CONSTRAINTS = {
-    width: { ideal: 1920 },
-    height: { ideal: 1080 }
+    width: { ideal: 2560 },
+    height: { ideal: 1440 }
 };
 
 /** True when this page is allowed to ask for the camera at all. */
@@ -50,6 +63,11 @@ export function createScanner({ video, box, decode, onResult }) {
     const confirmer = createConfirmer();
 
     let stream = null;
+    let track = null;
+    // The camera's own zoom range, or null when zoom is digital
+    let hardwareZoom = null;
+    let digitalZoom = 1;
+    let zoom = 1;
     // Bumped by every start and stop, so a loop left over from an earlier
     // session notices and exits instead of reporting stale results
     let session = 0;
@@ -64,15 +82,22 @@ export function createScanner({ video, box, decode, onResult }) {
         const constraints = deviceId
             ? { ...BASE_CONSTRAINTS, deviceId: { exact: deviceId } }
             : { ...BASE_CONSTRAINTS, facingMode: { ideal: 'environment' } };
+        // Chrome only exposes zoom once it has been asked for up front
+        if (navigator.mediaDevices.getSupportedConstraints?.().zoom) {
+            constraints.zoom = true;
+        }
         const newStream = await navigator.mediaDevices.getUserMedia({ video: constraints, audio: false });
 
         if (current !== session) {
             // Stopped (or restarted) while the permission prompt was open
-            newStream.getTracks().forEach(track => track.stop());
+            newStream.getTracks().forEach(t => t.stop());
             return;
         }
 
         stream = newStream;
+        track = stream.getVideoTracks()[0];
+        await setUpTrack();
+
         video.srcObject = stream;
         try {
             await video.play();
@@ -84,14 +109,60 @@ export function createScanner({ video, box, decode, onResult }) {
         scanLoop(current);
     }
 
+    /** Read what the camera can do, and ask for continuous focus. */
+    async function setUpTrack() {
+        const capabilities = track.getCapabilities?.() ?? {};
+
+        const range = capabilities.zoom;
+        hardwareZoom = range && range.max > range.min ? { min: range.min, max: range.max } : null;
+        zoom = hardwareZoom ? track.getSettings().zoom ?? defaultZoom(zoomLevels(hardwareZoom)) : 1;
+        setDigitalZoom(1);
+
+        if (capabilities.focusMode?.includes('continuous')) {
+            try {
+                await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+            } catch {
+                // Not worth failing the camera over
+            }
+        }
+    }
+
     function stop() {
         session++;
         confirmer.reset();
         if (stream) {
-            stream.getTracks().forEach(track => track.stop());
+            stream.getTracks().forEach(t => t.stop());
             stream = null;
+            track = null;
         }
         video.srcObject = null;
+        setDigitalZoom(1);
+    }
+
+    /**
+     * @param {number} level - One of zoomInfo().levels
+     */
+    async function setZoom(level) {
+        if (!track) return;
+        confirmer.reset();
+
+        if (hardwareZoom) {
+            await track.applyConstraints({ advanced: [{ zoom: level }] });
+            zoom = level;
+        } else {
+            setDigitalZoom(level);
+            zoom = level;
+        }
+    }
+
+    function setDigitalZoom(level) {
+        digitalZoom = level;
+        video.style.transform = level === 1 ? '' : `scale(${level})`;
+    }
+
+    /** @returns {{levels: number[], value: number, hardware: boolean}} */
+    function zoomInfo() {
+        return { levels: zoomLevels(hardwareZoom), value: zoom, hardware: Boolean(hardwareZoom) };
     }
 
     /** Video inputs, labelled once permission has been granted. */
@@ -105,9 +176,12 @@ export function createScanner({ video, box, decode, onResult }) {
         const cameras = await listCameras();
         if (cameras.length < 2) return;
 
-        const currentId = stream?.getVideoTracks()[0]?.getSettings().deviceId;
-        const index = cameras.findIndex(camera => camera.deviceId === currentId);
+        const index = cameras.findIndex(camera => camera.deviceId === deviceId());
         await start(cameras[(index + 1) % cameras.length].deviceId);
+    }
+
+    function deviceId() {
+        return track?.getSettings().deviceId ?? null;
     }
 
     async function scanLoop(current) {
@@ -137,12 +211,13 @@ export function createScanner({ video, box, decode, onResult }) {
         const crop = viewfinderCrop(
             video.videoWidth, video.videoHeight,
             video.clientWidth || video.videoWidth, video.clientHeight || video.videoHeight,
-            box);
+            box, digitalZoom);
+        const { width, height } = fitWithin(crop.width, crop.height, MAX_FRAME_EDGE);
 
-        canvas.width = crop.width;
-        canvas.height = crop.height;
-        context.drawImage(video, crop.x, crop.y, crop.width, crop.height, 0, 0, crop.width, crop.height);
-        return context.getImageData(0, 0, crop.width, crop.height);
+        canvas.width = width;
+        canvas.height = height;
+        context.drawImage(video, crop.x, crop.y, crop.width, crop.height, 0, 0, width, height);
+        return context.getImageData(0, 0, width, height);
     }
 
     return {
@@ -150,6 +225,9 @@ export function createScanner({ video, box, decode, onResult }) {
         stop,
         switchCamera,
         listCameras,
+        setZoom,
+        zoomInfo,
+        deviceId,
         get active() { return stream !== null; }
     };
 }

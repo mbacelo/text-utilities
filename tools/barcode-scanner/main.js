@@ -6,18 +6,22 @@
  * the camera and its scan loop in camera.js.
  */
 
+import { createStorage } from '../../shared/storage.js';
 import { createScanner, hasCameraPermission, isCameraSupported } from './camera.js';
 import { ImageOpenError, decodeImageData, decodeImageFile, ready } from './decoder.js';
-import { pickImageFile } from './scan-logic.js';
+import { pickImageFile, preferredCamera, telephotoCamera } from './scan-logic.js';
 
 /** The aiming box, as fractions of the camera view. Also sizes the overlay. */
 const VIEWFINDER = { width: 0.8, height: 0.5 };
 
 const VIBRATE_MS = 80;
 
+/** How long a Copy button says "Copied" before going back to "Copy". */
+const COPIED_MS = 2000;
+
 const ELEMENT_IDS = [
-    'resultPanel', 'resultList', 'copyStatus', 'message',
-    'cameraPanel', 'video', 'viewfinder', 'switchBtn', 'stopBtn',
+    'resultPanel', 'resultList', 'resultTemplate', 'copyStatus', 'message',
+    'cameraPanel', 'video', 'viewfinder', 'zoomBar', 'switchBtn', 'stopBtn',
     'startPanel', 'scanBtn', 'dropZone', 'fileInput', 'cameraNote'
 ];
 
@@ -37,9 +41,19 @@ const scanner = createScanner({
     }
 });
 
+// The last camera and zoom used, so the next visit starts where this one
+// left off (a phone's best lens, a zoom that suits the user's barcodes)
+const cameraStore = createStorage('barcode-scanner-camera');
+const zoomStore = createStorage('barcode-scanner-zoom');
+
 // Bumped by every new input, so a slow image decode that finishes after
 // the user has moved on is dropped instead of overwriting the newer result
 let inputRun = 0;
+
+// Video inputs, refreshed whenever the camera starts (labels need permission)
+let cameras = [];
+// The camera to go back to when leaving the telephoto lens
+let mainCameraId = null;
 
 /**
  * @param {string} text - Empty hides the message
@@ -60,7 +74,7 @@ function showCamera(visible) {
 function clearResults() {
     els.resultPanel.hidden = true;
     els.resultList.replaceChildren();
-    els.copyStatus.textContent = '';
+    setCopyStatus('');
 }
 
 // =====================
@@ -73,48 +87,58 @@ function showResults(results) {
     els.resultPanel.hidden = false;
 
     if (results.length === 1) {
-        copyText(results[0].text, { automatic: true });
+        const copyBtn = els.resultList.querySelector('.copy-btn');
+        copyText(results[0].text, copyBtn, { automatic: true });
     } else {
-        els.copyStatus.textContent = `${results.length} codes found`;
+        setCopyStatus(`${results.length} codes found`);
     }
 }
 
 function renderResult({ text, label }) {
-    const item = document.createElement('li');
-    item.className = 'result-item';
+    const item = els.resultTemplate.content.firstElementChild.cloneNode(true);
+    item.querySelector('.result-text').textContent = text;
+    item.querySelector('.result-format').textContent = label;
 
-    const format = document.createElement('span');
-    format.className = 'result-format';
-    format.textContent = label;
-
-    const value = document.createElement('p');
-    value.className = 'result-text';
-    value.textContent = text;
-
-    const copyBtn = document.createElement('button');
-    copyBtn.type = 'button';
-    copyBtn.className = 'text-btn';
-    copyBtn.textContent = 'Copy';
-    copyBtn.addEventListener('click', () => copyText(text));
-
-    item.append(format, value, copyBtn);
+    const copyBtn = item.querySelector('.copy-btn');
+    copyBtn.setAttribute('aria-label', `Copy ${text}`);
+    copyBtn.addEventListener('click', () => copyText(text, copyBtn));
     return item;
 }
 
 /**
  * @param {string} text
+ * @param {HTMLButtonElement} button - Shows "Copied" for a moment on success
  * @param {Object} [options]
  * @param {boolean} [options.automatic] - Not triggered by a click. Some
  *   browsers (Safari, Firefox) only allow clipboard writes straight after
  *   one, so a refusal here is expected and the user is pointed at Copy.
  */
-async function copyText(text, { automatic = false } = {}) {
+async function copyText(text, button, { automatic = false } = {}) {
     try {
         await navigator.clipboard.writeText(text);
-        els.copyStatus.textContent = 'Copied to clipboard';
+        // The button already says "Copied"; the status is for screen readers
+        setCopyStatus('Copied to clipboard', { visible: false });
+        showCopied(button);
     } catch {
-        els.copyStatus.textContent = automatic ? 'Tap Copy to copy it' : 'Copy failed';
+        setCopyStatus(automatic ? 'Tap Copy to copy it' : 'Copy failed');
     }
+}
+
+function setCopyStatus(text, { visible = true } = {}) {
+    els.copyStatus.textContent = text;
+    els.copyStatus.classList.toggle('sr-only', !visible);
+}
+
+function showCopied(button) {
+    const label = button.querySelector('.copy-label');
+    button.classList.add('is-copied');
+    label.textContent = 'Copied';
+
+    clearTimeout(button.copiedTimer);
+    button.copiedTimer = setTimeout(() => {
+        button.classList.remove('is-copied');
+        label.textContent = 'Copy';
+    }, COPIED_MS);
 }
 
 // =====================
@@ -141,16 +165,45 @@ async function startCamera() {
     setMessage('');
     clearResults();
     els.switchBtn.hidden = true;
+    els.zoomBar.hidden = true;
     showCamera(true);
 
     try {
-        await scanner.start();
+        const savedId = cameraStore.read();
+        await openCamera(savedId);
         if (!scanner.active) return;
-        const cameras = await scanner.listCameras();
+
+        cameras = await scanner.listCameras();
+        // First time on a phone with lens-switching virtual cameras: move
+        // to the one that can focus close (see preferredCamera)
+        const preferred = preferredCamera(cameras);
+        if (!savedId && preferred && preferred.deviceId !== scanner.deviceId()) {
+            await scanner.start(preferred.deviceId);
+            if (!scanner.active) return;
+        }
+
+        mainCameraId = isTelephoto(scanner.deviceId()) ? preferred?.deviceId ?? null : scanner.deviceId();
         els.switchBtn.hidden = cameras.length < 2;
+        rememberCamera();
+        await restoreZoom();
+        renderZoom();
     } catch (error) {
         showCamera(false);
         setMessage(cameraErrorMessage(error));
+    }
+}
+
+/** Start a specific camera, falling back to the default one if it is gone. */
+async function openCamera(deviceId) {
+    if (!deviceId) {
+        await scanner.start();
+        return;
+    }
+    try {
+        await scanner.start(deviceId);
+    } catch (error) {
+        if (error.name !== 'OverconstrainedError' && error.name !== 'NotFoundError') throw error;
+        await scanner.start();
     }
 }
 
@@ -162,9 +215,105 @@ function stopCamera() {
 async function switchCamera() {
     try {
         await scanner.switchCamera();
+        if (!isTelephoto(scanner.deviceId())) mainCameraId = scanner.deviceId();
+        rememberCamera();
+        renderZoom();
     } catch (error) {
         stopCamera();
         setMessage(cameraErrorMessage(error));
+    }
+}
+
+function rememberCamera() {
+    const id = scanner.deviceId();
+    if (id) cameraStore.writeDebounced(id);
+}
+
+// =====================
+// Zoom
+// =====================
+
+function isTelephoto(deviceId) {
+    return Boolean(deviceId) && telephotoCamera(cameras)?.deviceId === deviceId;
+}
+
+/**
+ * A separate telephoto lens is offered only where the camera cannot zoom
+ * itself: where it can (Android), zooming in already switches lens.
+ */
+function offeredTelephoto() {
+    return scanner.zoomInfo().hardware ? null : telephotoCamera(cameras);
+}
+
+function formatZoom(level) {
+    return `${Number(level.toFixed(1))}×`;
+}
+
+function renderZoom() {
+    const { levels, value } = scanner.zoomInfo();
+    const telephoto = offeredTelephoto();
+    const onTelephoto = isTelephoto(scanner.deviceId());
+
+    const chips = levels.map(level => zoomChip(
+        formatZoom(level), `Zoom ${formatZoom(level)}`,
+        !onTelephoto && level === value, () => chooseZoom(level)));
+    if (telephoto) {
+        chips.push(zoomChip('Tele', 'Telephoto lens', onTelephoto, chooseTelephoto));
+    }
+
+    els.zoomBar.replaceChildren(...chips);
+    els.zoomBar.hidden = chips.length < 2;
+}
+
+function zoomChip(text, label, pressed, onClick) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'zoom-chip';
+    chip.textContent = text;
+    chip.setAttribute('aria-label', label);
+    chip.setAttribute('aria-pressed', String(pressed));
+    chip.addEventListener('click', onClick);
+    return chip;
+}
+
+async function chooseZoom(level) {
+    try {
+        if (isTelephoto(scanner.deviceId())) {
+            await openCamera(mainCameraId);
+            rememberCamera();
+        }
+        await scanner.setZoom(level);
+        zoomStore.writeDebounced(String(level));
+    } catch (error) {
+        console.error('Changing the zoom failed', error);
+    }
+    renderZoom();
+}
+
+async function chooseTelephoto() {
+    try {
+        if (isTelephoto(scanner.deviceId())) {
+            await openCamera(mainCameraId);
+        } else {
+            await scanner.start(telephotoCamera(cameras).deviceId);
+        }
+        rememberCamera();
+    } catch (error) {
+        stopCamera();
+        setMessage(cameraErrorMessage(error));
+        return;
+    }
+    renderZoom();
+}
+
+/** Go back to the zoom used last time, if this camera offers it. */
+async function restoreZoom() {
+    const saved = Number(zoomStore.read());
+    if (!saved || !scanner.zoomInfo().levels.includes(saved)) return;
+    try {
+        await scanner.setZoom(saved);
+    } catch (error) {
+        console.error('Restoring the zoom failed', error);
     }
 }
 

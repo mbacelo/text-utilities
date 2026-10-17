@@ -2,9 +2,9 @@
  * Best-effort localStorage wrapper.
  *
  * Storage access throws outright in some contexts (Safari lockdown mode,
- * blocked cookies, private windows with a full quota), and the editor has
+ * blocked cookies, private windows with a full quota), and the page has
  * to keep working when it does - losing persistence is acceptable, losing
- * the editor is not.
+ * the page is not.
  */
 
 const WRITE_DEBOUNCE_MS = 300;

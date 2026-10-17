@@ -80,12 +80,14 @@ export function fitWithin(width, height, maxEdge) {
  * @param {number} viewWidth - Size of the element showing it
  * @param {number} viewHeight
  * @param {{width: number, height: number}} box - Fractions of the view (0-1)
+ * @param {number} [zoom] - Digital zoom: the video is scaled up by this
+ *   much around its centre, so only 1/zoom of the visible part shows
  * @returns {{x: number, y: number, width: number, height: number}}
  */
-export function viewfinderCrop(videoWidth, videoHeight, viewWidth, viewHeight, box) {
+export function viewfinderCrop(videoWidth, videoHeight, viewWidth, viewHeight, box, zoom = 1) {
     const scale = Math.max(viewWidth / videoWidth, viewHeight / videoHeight);
-    const visibleWidth = Math.min(videoWidth, viewWidth / scale);
-    const visibleHeight = Math.min(videoHeight, viewHeight / scale);
+    const visibleWidth = Math.min(videoWidth, viewWidth / scale) / zoom;
+    const visibleHeight = Math.min(videoHeight, viewHeight / scale) / zoom;
 
     const width = visibleWidth * box.width;
     const height = visibleHeight * box.height;
@@ -96,6 +98,69 @@ export function viewfinderCrop(videoWidth, videoHeight, viewWidth, viewHeight, b
         width: Math.max(1, Math.round(width)),
         height: Math.max(1, Math.round(height))
     };
+}
+
+/** Zoom levels offered when the page can only enlarge the picture itself. */
+export const DIGITAL_ZOOM_LEVELS = [1, 2, 3];
+
+/**
+ * Candidate levels when the camera zooms for real; trimmed to its range.
+ * Past 3x a hand-held phone shakes too much to scan, and four buttons are
+ * all that fit beside the close button on a narrow phone.
+ */
+const HARDWARE_ZOOM_STEPS = [1, 2, 3];
+
+/**
+ * The zoom buttons to offer.
+ * @param {{min: number, max: number}|null} range - The camera's own zoom
+ *   range, or null when it has none and zoom is done digitally
+ * @returns {number[]} Ascending, starting with the camera's widest view.
+ *   That can be below 1 (0.5 on phones with an ultra wide lens), which
+ *   also helps: ultra wide lenses usually focus closest.
+ */
+export function zoomLevels(range) {
+    if (!range || !(range.max > range.min)) {
+        return DIGITAL_ZOOM_LEVELS;
+    }
+    const steps = HARDWARE_ZOOM_STEPS.filter(level => level > range.min && level <= range.max);
+    return [range.min, ...steps];
+}
+
+/**
+ * The level to start at: 1x when offered, else the widest.
+ * @param {number[]} levels
+ * @returns {number}
+ */
+export function defaultZoom(levels) {
+    return levels.includes(1) ? 1 : levels[0];
+}
+
+/**
+ * The back camera to scan with when the phone offers a choice.
+ *
+ * iPhones list "virtual" cameras (Triple, Dual Wide, Dual) that switch
+ * lenses on their own, as the Camera app does. Pro models cannot focus
+ * closer than about 15 cm with the plain wide lens, so a close-up barcode
+ * stays blurred unless one of these is used: they switch to the macro
+ * capable ultra wide lens instead. Other devices have no such labels.
+ * @param {Array<{label: string, deviceId: string}>} cameras
+ * @returns {{label: string, deviceId: string}|null}
+ */
+export function preferredCamera(cameras) {
+    for (const pattern of [/back triple camera/i, /back dual wide camera/i, /back dual camera/i]) {
+        const camera = cameras.find(({ label }) => pattern.test(label));
+        if (camera) return camera;
+    }
+    return null;
+}
+
+/**
+ * A separately listed telephoto lens (iPhone: "Back Telephoto Camera").
+ * @param {Array<{label: string, deviceId: string}>} cameras
+ * @returns {{label: string, deviceId: string}|null}
+ */
+export function telephotoCamera(cameras) {
+    return cameras.find(({ label }) => /telephoto/i.test(label)) ?? null;
 }
 
 /**

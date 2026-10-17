@@ -18,8 +18,11 @@
         <h1>Barcode Scanner</h1>
         <p class="tool-intro">Scan a barcode or QR code with your camera, or read it from a photo or screenshot. The value is shown and copied to your clipboard.</p>
 
+        <!-- Outside the panels, so every upload button works whichever panel is showing -->
+        <input type="file" id="fileInput" class="sr-only" accept="image/*">
+
         <section class="results" id="resultPanel" aria-labelledby="resultHeading" hidden>
-            <h2 class="section-label" id="resultHeading">Result</h2>
+            <h2 class="sr-only" id="resultHeading">Result</h2>
             <ul class="result-list" id="resultList"></ul>
             <p class="pane-meta copy-status" id="copyStatus" role="status" aria-live="polite"></p>
         </section>
@@ -30,24 +33,36 @@
             <div class="camera-stage" id="cameraStage">
                 <video id="video" playsinline muted autoplay></video>
                 <div class="viewfinder" id="viewfinder" aria-hidden="true"></div>
+
+                <div class="zoom-bar" id="zoomBar" role="group" aria-label="Zoom" hidden></div>
+
+                <button type="button" class="stage-btn stage-close" id="stopBtn" aria-label="Stop camera" title="Stop camera">
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+
+                <div class="stage-bar">
+                    <label class="stage-btn upload-trigger" for="fileInput">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
+                        <span class="stage-label">Upload image</span>
+                    </label>
+                    <button type="button" class="stage-btn" id="switchBtn" hidden>
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+                        <span class="stage-label">Switch camera</span>
+                    </button>
+                </div>
             </div>
-            <p class="camera-hint">Point the camera at a barcode and hold it inside the frame.</p>
-            <div class="camera-actions">
-                <label class="text-btn" for="fileInput">Upload image</label>
-                <button type="button" class="text-btn" id="switchBtn" hidden>Switch camera</button>
-                <button type="button" class="text-btn" id="stopBtn">Stop</button>
-            </div>
+            <p class="camera-hint">Hold the barcode inside the frame. If it&rsquo;s small, zoom in and move the phone back until it&rsquo;s sharp.</p>
         </section>
 
         <section class="start" id="startPanel" aria-label="Scan">
-            <button type="button" class="scan-btn" id="scanBtn">
+            <button type="button" class="btn scan-btn" id="scanBtn">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
                 <span class="only-coarse">Scan barcode</span>
                 <span class="only-fine">Use camera</span>
             </button>
 
-            <!-- The input comes first so the label can show its keyboard focus -->
-            <input type="file" id="fileInput" class="sr-only" accept="image/*">
-            <label class="drop-zone" id="dropZone" for="fileInput">
+            <label class="drop-zone upload-trigger" id="dropZone" for="fileInput">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
                 <span class="only-fine drop-title">Paste, drop or choose an image</span>
                 <span class="only-fine drop-hint"><kbd>Ctrl</kbd>+<kbd>V</kbd> works anywhere on this page</span>
                 <span class="only-coarse">Upload image</span>
@@ -55,6 +70,18 @@
 
             <p class="pane-meta camera-note" id="cameraNote" hidden></p>
         </section>
+
+        <template id="resultTemplate">
+            <li class="result-item">
+                <p class="result-text"></p>
+                <span class="result-format"></span>
+                <button type="button" class="btn btn-small copy-btn">
+                    <svg class="icon icon-copy" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                    <svg class="icon icon-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                    <span class="copy-label">Copy</span>
+                </button>
+            </li>
+        </template>
     </main>
 
     <script src="vendor/zxing-reader.js"></script>

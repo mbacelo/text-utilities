@@ -12,7 +12,7 @@
 import { renderBlocks, renderHtml, sanitizeHtml, countWords } from './markdown.js';
 import { createTurndown } from './turndown-rules.js';
 import { createScrollSync } from './scroll-sync.js';
-import { createStorage } from './storage.js';
+import { createStorage } from '../../shared/storage.js';
 import { SAMPLE } from './sample.js';
 
 const STORAGE_KEY = 'markdown-editor-content';
