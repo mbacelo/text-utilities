@@ -1,6 +1,6 @@
 # Utility Pages
 
-A small collection of free, browser-based text tools. Everything runs client-side —
+A small collection of free, browser-based tools for text and codes. Everything runs client-side —
 no backend, no sign-up, and nothing leaves the browser.
 
 There is **no build step**. The pages are plain HTML, CSS and ES modules, so the
@@ -79,6 +79,41 @@ Markdown source on the left, live styled preview on the right, with synchronized
   curl -sSL -o marked.min.js   https://cdn.jsdelivr.net/npm/marked@18/lib/marked.umd.js
   curl -sSL -o purify.min.js   https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js
   curl -sSL -o turndown.min.js https://cdn.jsdelivr.net/npm/turndown@7/dist/turndown.min.js
+  ```
+
+### [Barcode Scanner](tools/barcode-scanner/index.html)
+
+Reads barcodes and QR codes from the camera or from an image, shows the value and copies it.
+
+- On a phone the page leads with one **Scan barcode** button that opens the back camera. Once
+  camera access has been granted, opening the page starts scanning straight away. Point the
+  camera at a code inside the frame: it stops, vibrates and shows the value.
+- On a desktop the page leads with a drop zone: paste a screenshot (<kbd>Ctrl</kbd>+<kbd>V</kbd>
+  anywhere on the page), drop an image, or click to choose one. The webcam is a secondary button.
+  Uploading also works on phones, where the browser offers to take a photo.
+- The value is copied automatically when one code is found. Safari and Firefox only allow
+  clipboard writes straight after a click, so there the status says *Tap Copy to copy it*
+  and the Copy button does it. An image with several codes lists each with its own Copy button.
+- The camera needs a secure context: `https://`, or `localhost` while developing. Over plain
+  `http` on another host the camera button is hidden and images still work. To try it on a phone
+  during development: with an Android phone on USB, use desktop Chrome's `chrome://inspect` →
+  *Port forwarding* (`8000` → `localhost:8000`) and open `localhost:8000` on the phone; on an
+  iPhone, deploy to an HTTPS host or expose the local server through an HTTPS tunnel.
+- Decoding uses a vendored copy of [zxing-wasm](tools/barcode-scanner/vendor/) (the reader
+  build, ZXing-C++ compiled to WebAssembly), so it behaves the same in every browser rather than
+  depending on the patchily supported `BarcodeDetector`. The library fetches its `.wasm` from
+  jsDelivr by default; [decoder.js](tools/barcode-scanner/decoder.js) points it at the vendored
+  copy, so nothing is loaded from elsewhere.
+- Images are decoded by the browser (so any format it displays works, with EXIF rotation),
+  painted onto white with a margin, and scaled down to 2400 px on the long edge. Camera frames
+  are cropped to the viewfinder, and a reading is accepted once two frames agree.
+- To refresh the vendored files, download the IIFE script and the matching `.wasm` **from the
+  same version**:
+
+  ```bash
+  cd tools/barcode-scanner/vendor
+  curl -sSL -o zxing-reader.js   https://cdn.jsdelivr.net/npm/zxing-wasm@3.1.4/dist/iife/reader/index.js
+  curl -sSL -o zxing_reader.wasm https://cdn.jsdelivr.net/npm/zxing-wasm@3.1.4/dist/reader/zxing_reader.wasm
   ```
 
 ## Tests

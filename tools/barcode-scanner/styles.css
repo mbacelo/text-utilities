@@ -1,0 +1,295 @@
+/* =====================
+   Barcode Scanner styles
+   Relies on the theme variables defined in shared/styles.css
+   (which must be linked before this file).
+   ===================== */
+
+.scanner-page {
+    max-width: 720px;
+}
+
+.scanner-page > section,
+.message {
+    max-width: 560px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+/* =====================
+   Start: scan button + drop zone
+   On a phone the camera leads; with a mouse, pasting or dropping does.
+   ===================== */
+.start {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.scan-btn {
+    order: 2;
+    align-self: center;
+    padding: 10px 22px;
+    background: var(--color-accent-soft);
+    color: var(--color-primary);
+    border: none;
+    border-radius: var(--border-radius-md);
+    font-family: inherit;
+    font-size: 0.95em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.scan-btn:hover {
+    background: var(--color-primary);
+    color: white;
+}
+
+.scan-btn:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 4px;
+}
+
+.drop-zone {
+    order: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 200px;
+    padding: var(--spacing-lg) var(--spacing-md);
+    border: 2px dashed var(--color-border);
+    border-radius: var(--border-radius-md);
+    background: var(--color-bg-light);
+    color: var(--color-text);
+    text-align: center;
+    cursor: pointer;
+    transition: border-color var(--transition-speed), background var(--transition-speed);
+}
+
+.drop-zone:hover,
+.drop-zone.is-dragging {
+    border-color: var(--color-primary);
+    background: var(--color-accent-soft);
+}
+
+#fileInput:focus-visible + .drop-zone {
+    border-color: var(--color-primary);
+    box-shadow: var(--focus-ring);
+}
+
+.drop-title {
+    font-weight: 600;
+    font-size: 1.1em;
+}
+
+.drop-hint {
+    font-size: 0.9em;
+    color: var(--color-text-light);
+}
+
+kbd {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    padding: 1px 6px;
+    border: 1px solid var(--color-border);
+    border-bottom-width: 2px;
+    border-radius: var(--border-radius-sm);
+    background: var(--color-surface);
+}
+
+.camera-note {
+    order: 3;
+    text-align: center;
+}
+
+/* =====================
+   Camera
+   ===================== */
+.camera {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.camera-stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    max-height: 65vh;
+    overflow: hidden;
+    border-radius: var(--border-radius-md);
+    background: #000;
+}
+
+/* camera.js maps the viewfinder to video pixels assuming `cover` */
+.camera-stage video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.viewfinder {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border: 3px solid rgba(255, 255, 255, 0.9);
+    border-radius: var(--border-radius-sm);
+    /* Dim everything outside the box; the stage clips the shadow */
+    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+}
+
+.camera-hint {
+    font-size: 0.9em;
+    color: var(--color-text-light);
+    text-align: center;
+}
+
+.camera-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+/* =====================
+   Results
+   ===================== */
+.results {
+    margin-bottom: var(--spacing-lg);
+}
+
+.result-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+}
+
+.result-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+        "format copy"
+        "text   text";
+    align-items: center;
+    gap: 8px var(--spacing-sm);
+    padding: var(--spacing-md);
+    border: 1px solid var(--color-success-border);
+    border-radius: var(--border-radius-md);
+    background: var(--color-success-bg);
+}
+
+.result-format {
+    grid-area: format;
+    justify-self: start;
+    font-size: 0.75em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-success-text);
+}
+
+.result-item .text-btn {
+    grid-area: copy;
+}
+
+.result-text {
+    grid-area: text;
+    font-family: var(--font-mono);
+    font-size: 1.5em;
+    line-height: 1.3;
+    color: var(--color-text);
+    overflow-wrap: anywhere;
+    /* One tap or click selects the whole value */
+    user-select: all;
+}
+
+/* =====================
+   Messages
+   ===================== */
+.message {
+    margin-bottom: var(--spacing-md);
+    padding: 12px var(--spacing-md);
+    border: 1px solid var(--color-warning-border);
+    border-radius: var(--border-radius-md);
+    background: var(--color-warning-bg);
+    color: var(--color-warning-text);
+    text-align: center;
+}
+
+.message.is-info {
+    border-color: var(--color-border);
+    background: var(--color-bg-light);
+    color: var(--color-text-light);
+}
+
+/* =====================
+   Pointer-specific layout
+   ===================== */
+.only-coarse {
+    display: none;
+}
+
+@media (pointer: coarse) {
+    .only-fine {
+        display: none;
+    }
+
+    .only-coarse {
+        display: inline;
+    }
+
+    /* The camera is the main event: one big, obvious button */
+    .scan-btn {
+        order: 1;
+        align-self: stretch;
+        padding: 20px;
+        background: var(--color-primary);
+        color: white;
+        font-size: 1.2em;
+        border-radius: var(--border-radius-md);
+    }
+
+    .scan-btn:hover {
+        background: var(--color-primary-dark);
+    }
+
+    /* The drop zone becomes a plain secondary button */
+    .drop-zone {
+        order: 2;
+        min-height: 0;
+        padding: 14px;
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+        color: var(--color-primary);
+        font-weight: 600;
+    }
+}
+
+@media (pointer: coarse) and (orientation: portrait) {
+    .camera-stage {
+        aspect-ratio: 3 / 4;
+    }
+}
+
+/* =====================
+   Responsive Design
+   ===================== */
+@media (max-width: 480px) {
+    .scanner-page {
+        padding: 20px 16px;
+    }
+
+    .tool-intro {
+        margin-bottom: var(--spacing-md);
+    }
+}

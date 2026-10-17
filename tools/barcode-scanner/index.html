@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Scan a barcode or QR code with your camera, or read it from an image, and copy its value.">
+    <title>Barcode Scanner &middot; Utility Pages</title>
+    <link rel="icon" href="../../shared/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../../shared/styles.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <main class="container scanner-page">
+        <nav class="page-nav" aria-label="Breadcrumb">
+            <a href="../../index.html" class="back-link">&#8592; All utilities</a>
+        </nav>
+
+        <h1>Barcode Scanner</h1>
+        <p class="tool-intro">Scan a barcode or QR code with your camera, or read it from a photo or screenshot. The value is shown and copied to your clipboard.</p>
+
+        <section class="results" id="resultPanel" aria-labelledby="resultHeading" hidden>
+            <h2 class="section-label" id="resultHeading">Result</h2>
+            <ul class="result-list" id="resultList"></ul>
+            <p class="pane-meta copy-status" id="copyStatus" role="status" aria-live="polite"></p>
+        </section>
+
+        <p class="message" id="message" role="alert" hidden></p>
+
+        <section class="camera" id="cameraPanel" aria-label="Camera" hidden>
+            <div class="camera-stage" id="cameraStage">
+                <video id="video" playsinline muted autoplay></video>
+                <div class="viewfinder" id="viewfinder" aria-hidden="true"></div>
+            </div>
+            <p class="camera-hint">Point the camera at a barcode and hold it inside the frame.</p>
+            <div class="camera-actions">
+                <label class="text-btn" for="fileInput">Upload image</label>
+                <button type="button" class="text-btn" id="switchBtn" hidden>Switch camera</button>
+                <button type="button" class="text-btn" id="stopBtn">Stop</button>
+            </div>
+        </section>
+
+        <section class="start" id="startPanel" aria-label="Scan">
+            <button type="button" class="scan-btn" id="scanBtn">
+                <span class="only-coarse">Scan barcode</span>
+                <span class="only-fine">Use camera</span>
+            </button>
+
+            <!-- The input comes first so the label can show its keyboard focus -->
+            <input type="file" id="fileInput" class="sr-only" accept="image/*">
+            <label class="drop-zone" id="dropZone" for="fileInput">
+                <span class="only-fine drop-title">Paste, drop or choose an image</span>
+                <span class="only-fine drop-hint"><kbd>Ctrl</kbd>+<kbd>V</kbd> works anywhere on this page</span>
+                <span class="only-coarse">Upload image</span>
+            </label>
+
+            <p class="pane-meta camera-note" id="cameraNote" hidden></p>
+        </section>
+    </main>
+
+    <script src="vendor/zxing-reader.js"></script>
+    <script type="module" src="main.js"></script>
+</body>
+</html>
